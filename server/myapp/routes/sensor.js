@@ -10,12 +10,11 @@ router.post("/", async function (req, res, next) {
       return res.status(400).json({ message: "Request body is empty" });
     }
 
-    // Check if the request body has aveage_bpm
-    if (!req.body.bpm) {
+    if (!req.body.bpm || !req.body.spo2) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    if (isNaN(req.body.bpm)) {
+    if (isNaN(req.body.bpm) || isNaN(req.body.spo2)) {
       return res.status(400).json({ message: "Invalid data type" });
     }
 
@@ -33,6 +32,16 @@ router.post("/", async function (req, res, next) {
 router.get("/latest", async function (req, res, next) {
   try {
     var sensor = await Sensor.findOne().sort({ _id: -1 }).exec();
+    res.json(sensor);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET sensor data showing all entries
+router.get("/", async function (req, res, next) {
+  try {
+    var sensor = await Sensor.find().exec();
     res.json(sensor);
   } catch (err) {
     next(err);
