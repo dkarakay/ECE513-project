@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Charts</title>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Time Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #measureButton {
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+        }
+        #measureButton:disabled {
+            background-color: #888;
+            cursor: not-allowed;
+        }
+        #chartContainer {
+            width: 80%;
+            margin: auto;
+            display: flex; /* Flex layout for side by side charts */
+            justify-content: space-between; /* Space between charts */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            display: none; /* Hide charts initially */
+        }
+        .chart-box {
+            width: 48%; /* Each chart takes up approximately half the container */
+            margin-top: 40px;
+        }
+        #timer {
+            font-size: 24px;
+            margin-top: 10px;
+            color: #333;
+        }
+        /* Data Information Section */
+        #dataInfo {
+            width: 80%;
+            margin: 40px auto;
+            text-align: left;
+        }
+        #dataInfo h2 {
+            margin-bottom: 10px;
+        }
+        #dataInfo p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Arduino Data Charts</h1>
+    <button id="measureButton">Measure</button>
+    <div id="timer"></div>
+    <div id="chartContainer">
+        <div class="chart-box">
+            <h2>BPM</h2>
+            <canvas id="bpmChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h2>SPO2</h2>
+            <canvas id="spo2Chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Data Information Section -->
+    <div id="dataInfo">
+        <h2>Data Information</h2>
+        <p>Current BPM: <span id="currentBPM">-</span></p>
+        <p>Average BPM: <span id="averageBPM">-</span></p>
+        <p>Current SPO2: <span id="currentSPO2">-</span></p>
+        <p>Average SPO2: <span id="averageSPO2">-</span></p>
+    </div>
+
+    <script>
+        // Initialize BPM Chart
+        const bpmCtx = document.getElementById('bpmChart').getContext('2d');
+        const bpmChart = new Chart(bpmCtx, {
+            type: 'line',
+            data: {
+                labels: [], // Time labels
+                datasets: [{
+                    label: 'BPM',
+                    data: [],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false, // Disable animations for real-time updates
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second',
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            },
+                            tooltipFormat: 'PPpp' // Tooltip format
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'BPM'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize SPO2 Chart
+        const spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
+        const spo2Chart = new Chart(spo2Ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Time labels
+                datasets: [{
+                    label: 'SPO2',
+                    data: [],
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false, // Disable animations for real-time updates
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second',
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            },
+                            tooltipFormat: 'PPpp' // Tooltip format
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'SPO2'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Timer Element
+        const timerElement = document.getElementById('timer');
+
+        // Event Listener for Measure Button
+        document.getElementById('measureButton').addEventListener('click', startMeasurement);
+
+        let measurementInterval;
+        let countdownInterval;
+        let remainingTime = 10; // 10 seconds
+
+        function startMeasurement() {
+            // Disable the measure button to prevent multiple clicks
+            const measureButton = document.getElementById('measureButton');
+            measureButton.disabled = true;
+
+            // Clear existing chart data
+            bpmChart.data.labels = [];
+            bpmChart.data.datasets[0].data = [];
+            bpmChart.update();
+
+            spo2Chart.data.labels = [];
+            spo2Chart.data.datasets[0].data = [];
+            spo2Chart.update();
+
+            // Show the charts container
+            document.getElementById('chartContainer').style.display = 'flex';
+
+            // Reset data information
+            document.getElementById('currentBPM').innerText = '-';
+            document.getElementById('averageBPM').innerText = '-';
+            document.getElementById('currentSPO2').innerText = '-';
+            document.getElementById('averageSPO2').innerText = '-';
+
+            // Display and start the countdown timer
+            remainingTime = 10;
+            timerElement.textContent = `Time Remaining: ${remainingTime} seconds`;
+            countdownInterval = setInterval(() => {
+                remainingTime--;
+                if (remainingTime > 0) {
+                    timerElement.textContent = `Time Remaining: ${remainingTime} seconds`;
+                } else {
+                    timerElement.textContent = 'Measurement Complete';
+                    clearInterval(countdownInterval);
+                    clearInterval(measurementInterval);
+                    measureButton.disabled = false;
+                }
+            }, 1000);
+
+            // Start fetching data every second
+            measurementInterval = setInterval(fetchData, 1000);
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor');
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log('Fetched data:', data);
+
+                // Validate data format
+                if (!Array.isArray(data)) {
+                    throw new Error('Expected data to be an array');
+                }
+
+                // Check if data contains required fields
+                data.forEach(entry => {
+                    if ((!entry.timestamp && !entry._id) || typeof entry.bpm !== 'number' || typeof entry.spo2 !== 'number') {
+                        throw new Error('Invalid data format');
+                    }
+                });
+
+                // Determine the start time (10 seconds ago from now)
+                const now = new Date();
+                const startTime = new Date(now.getTime() - 10 * 1000);
+
+                // Filter entries within the last 10 seconds
+                const recentEntries = data.filter(entry => {
+                    let entryTime;
+                    if (entry.timestamp) {
+                        entryTime = new Date(entry.timestamp);
+                    } else if (entry._id) {
+                        // Extract timestamp from ObjectId
+                        const ts = entry._id.substring(0, 8);
+                        const timestamp = parseInt(ts, 16) * 1000;
+                        entryTime = new Date(timestamp);
+                    } else {
+                        return false;
+                    }
+                    return entryTime >= startTime && entryTime <= now;
+                });
+
+                // Sort the entries by timestamp in ascending order
+                recentEntries.sort((a, b) => {
+                    let timeA = a.timestamp ? new Date(a.timestamp) : new Date(parseInt(a._id.substring(0, 8), 16) * 1000);
+                    let timeB = b.timestamp ? new Date(b.timestamp) : new Date(parseInt(b._id.substring(0, 8), 16) * 1000);
+                    return timeA - timeB;
+                });
+
+                const labels = recentEntries.map(entry => {
+                    if (entry.timestamp) {
+                        return new Date(entry.timestamp);
+                    } else if (entry._id) {
+                        // Extract timestamp from ObjectId
+                        const ts = entry._id.substring(0, 8);
+                        const timestamp = parseInt(ts, 16) * 1000;
+                        return new Date(timestamp);
+                    } else {
+                        return new Date();
+                    }
+                });
+
+                const bpmData = recentEntries.map(entry => entry.bpm);
+                const spo2Data = recentEntries.map(entry => entry.spo2);
+
+                // Update BPM Chart
+                bpmChart.data.labels = labels;
+                bpmChart.data.datasets[0].data = bpmData;
+                bpmChart.update();
+
+                // Update SPO2 Chart
+                spo2Chart.data.labels = labels;
+                spo2Chart.data.datasets[0].data = spo2Data;
+                spo2Chart.update();
+
+                // Calculate and display current and average BPM
+                if (bpmData.length > 0) {
+                    const currentBPM = bpmData[bpmData.length - 1];
+                    const averageBPM = bpmData.reduce((a, b) => a + b, 0) / bpmData.length;
+                    document.getElementById('currentBPM').innerText = currentBPM;
+                    document.getElementById('averageBPM').innerText = averageBPM.toFixed(2);
+                }
+
+                // Calculate and display current and average SPO2
+                if (spo2Data.length > 0) {
+                    const currentSPO2 = spo2Data[spo2Data.length - 1];
+                    const averageSPO2 = spo2Data.reduce((a, b) => a + b, 0) / spo2Data.length;
+                    document.getElementById('currentSPO2').innerText = currentSPO2;
+                    document.getElementById('averageSPO2').innerText = averageSPO2.toFixed(2);
+                }
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                // Optionally, display the error to the user without using alert
+            }
+        }
+    </script>
+</body>
+</html>
