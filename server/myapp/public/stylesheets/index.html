@@ -2,331 +2,295 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Charts</title>
+    <title>Sensor Data Graph</title>
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js Time Adapter -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Chart.js Date Adapter (date-fns) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 20px;
         }
-        #measureButton {
-            margin: 20px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 5px;
+        label, select, input, button {
+            margin: 5px;
         }
-        #measureButton:disabled {
-            background-color: #888;
-            cursor: not-allowed;
-        }
-        #chartContainer {
-            width: 80%;
-            margin: auto;
-            display: flex; /* Flex layout for side by side charts */
-            justify-content: space-between; /* Space between charts */
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
-            display: none; /* Hide charts initially */
-        }
-        .chart-box {
-            width: 48%; /* Each chart takes up approximately half the container */
-            margin-top: 40px;
-        }
-        #timer {
-            font-size: 24px;
-            margin-top: 10px;
-            color: #333;
-        }
-        /* Data Information Section */
-        #dataInfo {
-            width: 80%;
-            margin: 40px auto;
-            text-align: left;
-        }
-        #dataInfo h2 {
-            margin-bottom: 10px;
-        }
-        #dataInfo p {
-            font-size: 18px;
-            margin: 5px 0;
+        #sensorChart {
+            max-width: 800px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Arduino Data Charts</h1>
-    <button id="measureButton">Measure</button>
-    <div id="timer"></div>
-    <div id="chartContainer">
-        <div class="chart-box">
-            <h2>BPM</h2>
-            <canvas id="bpmChart"></canvas>
-        </div>
-        <div class="chart-box">
-            <h2>SPO2</h2>
-            <canvas id="spo2Chart"></canvas>
-        </div>
+    <h1>Sensor Data Graph</h1>
+    
+    <div>
+        <label for="startTime">Start Time:</label>
+        <input type="datetime-local" id="startTime" name="startTime">
+        
+        <label for="endTime">End Time:</label>
+        <input type="datetime-local" id="endTime" name="endTime">
+        
+        <label for="aggregation">Aggregation:</label>
+        <select id="aggregation" name="aggregation">
+            <option value="30">30 Minutes</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+        </select>
+        
+        <button id="graphButton">Graph</button>
     </div>
-
-    <!-- Data Information Section -->
-    <div id="dataInfo">
-        <h2>Data Information</h2>
-        <p>Current BPM: <span id="currentBPM">-</span></p>
-        <p>Average BPM: <span id="averageBPM">-</span></p>
-        <p>Current SPO2: <span id="currentSPO2">-</span></p>
-        <p>Average SPO2: <span id="averageSPO2">-</span></p>
-    </div>
-
+    
+    <canvas id="sensorChart"></canvas>
+    
     <script>
-        // Initialize BPM Chart
-        const bpmCtx = document.getElementById('bpmChart').getContext('2d');
-        const bpmChart = new Chart(bpmCtx, {
-            type: 'line',
-            data: {
-                labels: [], // Time labels
-                datasets: [{
-                    label: 'BPM',
-                    data: [],
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: false, // Disable animations for real-time updates
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'second',
-                            displayFormats: {
-                                second: 'HH:mm:ss'
-                            },
-                            tooltipFormat: 'PPpp' // Tooltip format
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        },
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 10
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'BPM'
-                        }
-                    }
-                }
+        let sensorChartInstance = null;
+
+        document.getElementById('graphButton').addEventListener('click', function() {
+            const startTimeInput = document.getElementById('startTime').value;
+            const endTimeInput = document.getElementById('endTime').value;
+            const aggregation = document.getElementById('aggregation').value;
+
+            if (!startTimeInput || !endTimeInput) {
+                alert('Please select both start and end times.');
+                return;
             }
+
+            const startTime = new Date(startTimeInput);
+            const endTime = new Date(endTimeInput);
+
+            if (isNaN(startTime) || isNaN(endTime)) {
+                alert('Invalid date format.');
+                return;
+            }
+
+            if (startTime >= endTime) {
+                alert('Start time must be before end time.');
+                return;
+            }
+
+            const url = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
+            console.log('Fetching data from:', url);
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Data fetched:', data);
+                    if (!Array.isArray(data) || data.length === 0) {
+                        alert('No data available for the selected time range.');
+                        return;
+                    }
+
+                    // Process data based on aggregation
+                    const aggregatedData = aggregateData(data, aggregation);
+                    if (aggregatedData.length === 0) {
+                        alert('No valid data available after aggregation.');
+                        return;
+                    }
+                    const labels = aggregatedData.map(entry => entry.interval);
+                    const spo2Values = aggregatedData.map(entry => entry.avgSpo2);
+                    const bpmValues = aggregatedData.map(entry => entry.avgBpm);
+
+                    const ctx = document.getElementById('sensorChart').getContext('2d');
+
+                    if (sensorChartInstance) {
+                        sensorChartInstance.destroy();
+                    }
+
+                    sensorChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Average SpO2',
+                                    data: spo2Values,
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    yAxisID: 'y',
+                                    fill: true
+                                },
+                                {
+                                    label: 'Average BPM',
+                                    data: bpmValues,
+                                    borderColor: 'rgba(255, 99, 132, 1)',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                    yAxisID: 'y1',
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            stacked: false,
+                            scales: {
+                                x: { 
+                                    type: 'time', 
+                                    time: { 
+                                        unit: getTimeUnit(aggregation) 
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Time'
+                                    }
+                                },
+                                y: { 
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'SpO2'
+                                    },
+                                    beginAtZero: true
+                                },
+                                y1: { 
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'BPM'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false,
+                                    },
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert(`Failed to fetch data: ${error.message}`);
+                });
         });
 
-        // Initialize SPO2 Chart
-        const spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
-        const spo2Chart = new Chart(spo2Ctx, {
-            type: 'line',
-            data: {
-                labels: [], // Time labels
-                datasets: [{
-                    label: 'SPO2',
-                    data: [],
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: false, // Disable animations for real-time updates
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'second',
-                            displayFormats: {
-                                second: 'HH:mm:ss'
-                            },
-                            tooltipFormat: 'PPpp' // Tooltip format
-                        },
-                        title: {
-                            display: true,
-                            text: 'Time'
-                        },
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 10
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'SPO2'
-                        }
-                    }
+        /**
+         * Aggregates data based on the selected interval.
+         * @param {Array} data - The fetched sensor data.
+         * @param {string} aggregation - The aggregation interval ('30', 'daily', 'weekly').
+         * @returns {Array} - Aggregated data with averages.
+         */
+        function aggregateData(data, aggregation) {
+            const grouped = {};
+            let invalidEntries = 0;
+
+            data.forEach(entry => {
+                if (!entry.created_at) {
+                    console.warn('Invalid timestamp:', entry.created_at);
+                    invalidEntries++;
+                    return; // Skip entries without a timestamp
                 }
+
+                const date = new Date(entry.created_at);
+                if (isNaN(date)) {
+                    console.warn('Invalid timestamp:', entry.created_at);
+                    invalidEntries++;
+                    return; // Skip invalid dates
+                }
+
+                let key;
+
+                if (aggregation === '30') {
+                    // Round down to the nearest 30 minutes
+                    date.setMinutes(Math.floor(date.getMinutes() / 30) * 30, 0, 0);
+                    key = date.toISOString();
+                } else if (aggregation === 'daily') {
+                    // Group by day
+                    key = date.toISOString().split('T')[0];
+                } else if (aggregation === 'weekly') {
+                    // Group by start of the ISO week (Monday)
+                    const startOfWeek = getStartOfWeek(date);
+                    key = startOfWeek.toISOString();
+                }
+
+                if (!grouped[key]) {
+                    grouped[key] = { spo2: [], bpm: [] };
+                }
+
+                if (typeof entry.spo2 !== 'number' || typeof entry.bpm !== 'number') {
+                    console.warn('Invalid spo2 or bpm values:', entry.spo2, entry.bpm);
+                    invalidEntries++;
+                    return; // Skip entries with invalid spo2 or bpm
+                }
+
+                grouped[key].spo2.push(entry.spo2);
+                grouped[key].bpm.push(entry.bpm);
+            });
+
+            if (invalidEntries > 0) {
+                console.warn(`Skipped ${invalidEntries} invalid entries.`);
             }
-        });
 
-        // Timer Element
-        const timerElement = document.getElementById('timer');
+            const aggregated = [];
 
-        // Event Listener for Measure Button
-        document.getElementById('measureButton').addEventListener('click', startMeasurement);
+            for (const key in grouped) {
+                const avgSpo2 = average(grouped[key].spo2);
+                const avgBpm = average(grouped[key].bpm);
+                aggregated.push({
+                    interval: key,
+                    avgSpo2: avgSpo2,
+                    avgBpm: avgBpm
+                });
+            }
 
-        let measurementInterval;
-        let countdownInterval;
-        let remainingTime = 10; // 10 seconds
+            // Sort the aggregated data by interval
+            aggregated.sort((a, b) => new Date(a.interval) - new Date(b.interval));
 
-        function startMeasurement() {
-            // Disable the measure button to prevent multiple clicks
-            const measureButton = document.getElementById('measureButton');
-            measureButton.disabled = true;
-
-            // Clear existing chart data
-            bpmChart.data.labels = [];
-            bpmChart.data.datasets[0].data = [];
-            bpmChart.update();
-
-            spo2Chart.data.labels = [];
-            spo2Chart.data.datasets[0].data = [];
-            spo2Chart.update();
-
-            // Show the charts container
-            document.getElementById('chartContainer').style.display = 'flex';
-
-            // Reset data information
-            document.getElementById('currentBPM').innerText = '-';
-            document.getElementById('averageBPM').innerText = '-';
-            document.getElementById('currentSPO2').innerText = '-';
-            document.getElementById('averageSPO2').innerText = '-';
-
-            // Display and start the countdown timer
-            remainingTime = 10;
-            timerElement.textContent = `Time Remaining: ${remainingTime} seconds`;
-            countdownInterval = setInterval(() => {
-                remainingTime--;
-                if (remainingTime > 0) {
-                    timerElement.textContent = `Time Remaining: ${remainingTime} seconds`;
-                } else {
-                    timerElement.textContent = 'Measurement Complete';
-                    clearInterval(countdownInterval);
-                    clearInterval(measurementInterval);
-                    measureButton.disabled = false;
-                }
-            }, 1000);
-
-            // Start fetching data every second
-            measurementInterval = setInterval(fetchData, 1000);
+            return aggregated;
         }
 
-        async function fetchData() {
-            try {
-                const response = await fetch('http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor');
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.statusText}`);
-                }
-                const data = await response.json();
-                console.log('Fetched data:', data);
+        /**
+         * Calculates the average of an array of numbers.
+         * @param {Array} arr - Array of numbers.
+         * @returns {number} - The average value.
+         */
+        function average(arr) {
+            if (arr.length === 0) return 0;
+            const sum = arr.reduce((acc, val) => acc + val, 0);
+            return parseFloat((sum / arr.length).toFixed(2));
+        }
 
-                // Validate data format
-                if (!Array.isArray(data)) {
-                    throw new Error('Expected data to be an array');
-                }
+        /**
+         * Returns the start date of the ISO week for a given date.
+         * @param {Date} date - The date object.
+         * @returns {Date} - The start date of the week (Monday).
+         */
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - ((day + 6) % 7);
+            d.setDate(diff);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
 
-                // Check if data contains required fields
-                data.forEach(entry => {
-                    if ((!entry.timestamp && !entry._id) || typeof entry.bpm !== 'number' || typeof entry.spo2 !== 'number') {
-                        throw new Error('Invalid data format');
-                    }
-                });
-
-                // Determine the start time (10 seconds ago from now)
-                const now = new Date();
-                const startTime = new Date(now.getTime() - 10 * 1000);
-
-                // Filter entries within the last 10 seconds
-                const recentEntries = data.filter(entry => {
-                    let entryTime;
-                    if (entry.timestamp) {
-                        entryTime = new Date(entry.timestamp);
-                    } else if (entry._id) {
-                        // Extract timestamp from ObjectId
-                        const ts = entry._id.substring(0, 8);
-                        const timestamp = parseInt(ts, 16) * 1000;
-                        entryTime = new Date(timestamp);
-                    } else {
-                        return false;
-                    }
-                    return entryTime >= startTime && entryTime <= now;
-                });
-
-                // Sort the entries by timestamp in ascending order
-                recentEntries.sort((a, b) => {
-                    let timeA = a.timestamp ? new Date(a.timestamp) : new Date(parseInt(a._id.substring(0, 8), 16) * 1000);
-                    let timeB = b.timestamp ? new Date(b.timestamp) : new Date(parseInt(b._id.substring(0, 8), 16) * 1000);
-                    return timeA - timeB;
-                });
-
-                const labels = recentEntries.map(entry => {
-                    if (entry.timestamp) {
-                        return new Date(entry.timestamp);
-                    } else if (entry._id) {
-                        // Extract timestamp from ObjectId
-                        const ts = entry._id.substring(0, 8);
-                        const timestamp = parseInt(ts, 16) * 1000;
-                        return new Date(timestamp);
-                    } else {
-                        return new Date();
-                    }
-                });
-
-                const bpmData = recentEntries.map(entry => entry.bpm);
-                const spo2Data = recentEntries.map(entry => entry.spo2);
-
-                // Update BPM Chart
-                bpmChart.data.labels = labels;
-                bpmChart.data.datasets[0].data = bpmData;
-                bpmChart.update();
-
-                // Update SPO2 Chart
-                spo2Chart.data.labels = labels;
-                spo2Chart.data.datasets[0].data = spo2Data;
-                spo2Chart.update();
-
-                // Calculate and display current and average BPM
-                if (bpmData.length > 0) {
-                    const currentBPM = bpmData[bpmData.length - 1];
-                    const averageBPM = bpmData.reduce((a, b) => a + b, 0) / bpmData.length;
-                    document.getElementById('currentBPM').innerText = currentBPM;
-                    document.getElementById('averageBPM').innerText = averageBPM.toFixed(2);
-                }
-
-                // Calculate and display current and average SPO2
-                if (spo2Data.length > 0) {
-                    const currentSPO2 = spo2Data[spo2Data.length - 1];
-                    const averageSPO2 = spo2Data.reduce((a, b) => a + b, 0) / spo2Data.length;
-                    document.getElementById('currentSPO2').innerText = currentSPO2;
-                    document.getElementById('averageSPO2').innerText = averageSPO2.toFixed(2);
-                }
-
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                // Optionally, display the error to the user without using alert
-            }
+        /**
+         * Determines the time unit for the x-axis based on aggregation.
+         * @param {string} aggregation - The aggregation interval.
+         * @returns {string} - The time unit.
+         */
+        function getTimeUnit(aggregation) {
+            if (aggregation === '30') return 'minute';
+            if (aggregation === 'daily') return 'day';
+            if (aggregation === 'weekly') return 'week';
+            return 'minute';
         }
     </script>
 </body>
