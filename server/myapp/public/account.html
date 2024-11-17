@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>ECE513 Project</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="javascripts/account.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
+      <br/>
+      <br/>
+      <div>
+        <button id="btnLogOut">LogOut</button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        if (!window.localStorage.getItem("token")) {
+          window.location.replace("display.html");
+        }
+      })();
+    </script>
+  </body>
+</html>
+

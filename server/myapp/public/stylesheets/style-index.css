@@ -1,0 +1,26 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background-color: #f4f4f4;
+}
+
+h1 {
+  text-align: center;
+}
+
+.team {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.member {
+  text-align: center;
+}
+
+img {
+  border-radius: 10px;
+  width: 250px;
+  height: auto;
+}
+
