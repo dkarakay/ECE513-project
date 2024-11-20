@@ -34,7 +34,7 @@
         <label for="aggregation">Aggregation:</label>
         <select id="aggregation" name="aggregation">
             <option value="30">30 Minutes</option>
-            <option value="daily">Daily</option>
+            <option value="daily" selected>Daily</option>
             <option value="weekly">Weekly</option>
         </select>
         
@@ -292,6 +292,33 @@
             if (aggregation === 'weekly') return 'week';
             return 'minute';
         }
+        // Add loadGraphData function here
+        function loadGraphData() {
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const aggregation = document.getElementById('aggregation').value;
+            drawGraph(startTime, endTime, aggregation);
+        }
+
+        window.onload = function() {
+            const now = new Date();
+            const endTimeElem = document.getElementById('endTime');
+            const startTimeElem = document.getElementById('startTime');
+            const aggregationElem = document.getElementById('aggregation');
+
+            // Set default end time to now
+            endTimeElem.value = now.toISOString().slice(0,16);
+
+            // Set default start time to 24 hours ago
+            const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            startTimeElem.value = startTime.toISOString().slice(0,16);
+
+            // Set default aggregation to 'daily'
+            aggregationElem.value = 'daily';
+            
+            // Load the graph data
+            loadGraphData();
+        };
     </script>
 </body>
 </html>
