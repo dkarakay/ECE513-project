@@ -20,7 +20,8 @@ router.post("/register", async function (req, res) {
         const passwordHash = bcrypt.hashSync(req.body.password, 10);
         const newUser = new User({
             email: req.body.email,
-            passwordHash: passwordHash
+            passwordHash: passwordHash,
+            device_id: req.body.device_id
         });
 
         // Save the new user

@@ -9,9 +9,14 @@ function signup() {
         window.alert("invalid password");
         return;
     }
+    if ($('#device_id').val() === "") {
+        window.alert("invalid device id");
+        return;
+    }
     let txdata = {
         email: $('#email').val(),
-        password: $('#password').val()
+        password: $('#password').val(),
+        device_id: $('#device_id').val()
     };
     $.ajax({
         url: '/users/register',

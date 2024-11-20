@@ -2,7 +2,7 @@ $(function (){
     $('#btnLogOut').click(logout);
 
     $.ajax({
-        url: '/customers/status',
+        url: '/users/status',
         method: 'GET',
         headers: { 'x-auth' : window.localStorage.getItem("token") },
         dataType: 'json'
