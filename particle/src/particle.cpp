@@ -1,168 +1,233 @@
-/* 
- * Project Heart Rate
- * Author: Deniz Karakay
- * Date: 11/10/2024
- * For comprehensive documentation and examples, please visit:
- * https://docs.particle.io/firmware/best-practices/firmware-template/
- */
+/*****************************************************************
+ * Pulse rate and SPO2 meter using the MAX30102
+ * This is a mashup of
+ * 1. sensor initialization and readout code from Sparkfun
+ * https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library
+ *
+ *  2. spo2 & pulse rate analysis from
+ * https://github.com/aromring/MAX30102_by_RF
+ * (algorithm by  Robert Fraczkiewicz)
+ * I tweaked this to use 50Hz sample rate
+ *
+ ******************************************************************/
 
-
-/*
-  Optical Heart Rate Detection (PBA Algorithm) using the MAX30105 Breakout
-  By: Nathan Seidle @ SparkFun Electronics
-  Date: October 2nd, 2016
-  https://github.com/sparkfun/MAX30105_Breakout
-
-  This is a demo to show the reading of heart rate or beats per minute (BPM) using
-  a Penpheral Beat Amplitude (PBA) algorithm.
-
-  It is best to attach the sensor to your finger using a rubber band or other tightening
-  device. Humans are generally bad at applying constant pressure to a thing. When you
-  press your finger against the sensor it varies enough to cause the blood in your
-  finger to flow differently which causes the sensor readings to go wonky.
-
-  Hardware Connections (Breakoutboard to Arduino):
-  -5V = 5V (3.3V is allowed)
-  -GND = GND
-  -SDA = A4 (or SDA)
-  -SCL = A5 (or SCL)
-  -INT = Not connected
-
-  The MAX30105 Breakout can handle 5V or 3.3V I2C logic. We recommend powering the board with 5V
-  but it will also run at 3.3V.
-*/
-
-// Include Particle Device OS APIs
 #include "Particle.h"
 
-// Let Device OS manage the connection to the Particle Cloud
-SYSTEM_MODE(AUTOMATIC);
-
-// Run the application and system concurrently in separate threads
-SYSTEM_THREAD(ENABLED);
-
-// Show system, cloud connectivity, and application logs over USB
-// View logs with CLI using 'particle serial monitor --follow'
-SerialLogHandler logHandler(LOG_LEVEL_INFO);
-
 #include <Wire.h>
+
 #include "MAX30105.h"
-#include "application.h"
-#include "HttpClient.h"
+#include "algorithm_by_RF.h"
 
+enum State { IDLE, REQUEST_MEASUREMENT, SEND, WAIT, SAVE_TO_EEPROM, EMPTY };
+SYSTEM_THREAD(ENABLED);  // uncomment this to use your particle device without
+                         // WIFI connection
 
-MAX30105 particleSensor;
+MAX30105 sensor;
 
-const byte RATE_SIZE = 4; //Increase this for more averaging. 4 is good.
-byte rates[RATE_SIZE]; //Array of heart rates
-byte rateSpot = 0;
-long lastBeat = 0; //Time at which the last beat occurred
+int LED = D7;
 
-float beatsPerMinute;
-int beatAvg;
+uint32_t aun_ir_buffer[RFA_BUFFER_SIZE];   // infrared LED sensor data
+uint32_t aun_red_buffer[RFA_BUFFER_SIZE];  // red LED sensor data
+int32_t n_heart_rate;
+float n_spo2;
+int numSamples;
 
-HttpClient http;
+// float SPO2_LOWER_BOUNDRY = 94;
 
-// Headers currently need to be set at init, useful for API keys etc.
-http_header_t headers[] = {
-    { "Content-Type", "application/json" },
-    { NULL, NULL } // NOTE: Always terminate headers with NULL
-};
+State currentState = REQUEST_MEASUREMENT;
+bool dataSent = false;
+unsigned long previousMillis = 0;
+unsigned long stateStartMillis = 0;
+const long interval = 500;  // interval at which to blink (milliseconds)
+const long requestTimeout =
+    300000;                       // 5 1 minute timeout for taking measurement
+const long waitDuration = 60000;  // 1 2 minutes wait duration
+bool ledState = false;
+int dataSentCount = 0;
 
-http_request_t request;
-http_response_t response;
-unsigned long lastSendTime = 0;  // Store the last send timestamp
-
-void sendBPMData(float currentBPM, int averageBPM) {
-    request.hostname = "0a3a-150-135-165-137.ngrok-free.app";
-    request.port = 80; // Default HTTP port
-    request.path = "/sensor";
-    request.body = "{\"average_bpm\": " + String(averageBPM) + "}";
-
-    Serial.println("Sending data to server...");
-    Serial.println(request.body);
-    http.post(request, response, headers);
-
-    Serial.print("Response Status: ");
-    Serial.println(response.status);
-    Serial.print("Response Body: ");
-    Serial.println(response.body);
+String processor(const String& var) {
+  if (var == "SPO2") {
+    return n_spo2 > 0 ? String(n_spo2) : String("00.00");
+  } else if (var == "HEARTRATE") {
+    return n_heart_rate > 0 ? String(n_heart_rate) : String("00");
+  }
+  return String();
 }
 
-void setup()
-{
+void printCurrentTime() {
+  Serial.print("Current time: ");
+  Serial.println(Time.format(Time.now(), "%H:%M:%S"));
+}
+
+void saveDataToEEPROM(float averageBPM, float averageSPO2) {
+  EEPROM.put(0, averageBPM);
+  EEPROM.put(sizeof(float), averageSPO2);
+  Serial.println("DATA SAVED to EEPROM");
+}
+
+void sendDataParticle(float averageBPM, float averageSPO2) {
+  if (Particle.connected()) {
+    Particle.publish("bpm", String(averageBPM), PRIVATE);
+    Particle.publish("spo2", String(averageSPO2), PRIVATE);
+    Serial.println("DATA SENT to Particle Cloud");
+    dataSent = true;
+    dataSentCount++;
+    if (dataSentCount >= 3) {
+      currentState = WAIT;
+      stateStartMillis = millis();
+      dataSentCount = 0;
+    } else {
+      currentState = EMPTY;
+    }
+
+  } else {
+    currentState = SAVE_TO_EEPROM;
+  }
+}
+
+void setup() {
   Serial.begin(115200);
-  Serial.println("Initializing...");
+  Serial.println();
+  Serial.println("SPO2/Pulse meter");
+  pinMode(LED, OUTPUT);
+  RGB.control(true);  // take control of the RGB LED
 
-  // Initialize sensor
-  if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
-  {
-    Serial.println("MAX30105 was not found. Please check wiring/power. ");
-    while (1);
-  }
-  Serial.println("Place your index finger on the sensor with steady pressure.");
-
-  particleSensor.setup(); //Configure sensor with default settings
-  particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
-  particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
-}
-
-void loop()
-{
-  long irValue = particleSensor.getIR();
-
-
-
-
-  if (checkForBeat(irValue) == true)
-  {
-    //We sensed a beat!
-    long delta = millis() - lastBeat;
-    lastBeat = millis();
-
-    beatsPerMinute = 60 / (delta / 1000.0);
-
-    if (beatsPerMinute < 255 && beatsPerMinute > 20)
-    {
-      rates[rateSpot++] = (byte)beatsPerMinute; //Store this reading in the array
-      rateSpot %= RATE_SIZE; //Wrap variable
-
-      //Take average of readings
-      beatAvg = 0;
-      for (byte x = 0 ; x < RATE_SIZE ; x++)
-        beatAvg += rates[x];
-      beatAvg /= RATE_SIZE;
+  if (sensor.begin(Wire, I2C_SPEED_FAST) == false) {
+    Serial.println(
+        "Error: MAX30102 not found, try cycling power to the board...");
+    // indicate fault by blinking the board LED rapidly
+    while (1) {
+      delay(100);
     }
-    // Send the current and average BPM data
-  
+  }
+  // ref Maxim AN6409, average dc value of signal should be within 0.25 to 0.75
+  // 18-bit range (max value = 262143) You should test this as per the app note
+  // depending on application : finger, forehead, earlobe etc. It even depends
+  // on skin tone. I found that the optimum combination for my index finger was
+  // : ledBrightness=30 and adcRange=2048, to get max dynamic range in the
+  // waveform, and a dc level > 100000
+  byte ledBrightness = 30;  // 0 = off,  255 = 50mA
+  byte sampleAverage = 4;   // 1, 2, 4, 8, 16, 32
+  byte ledMode =
+      2;  // 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green (MAX30105 only)
+  int sampleRate = 200;  // 50, 100, 200, 400, 800, 1000, 1600, 3200
+  int pulseWidth = 411;  // 69, 118, 215, 411
+  int adcRange = 2048;   // 2048, 4096, 8192, 16384
 
+  sensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth,
+               adcRange);
+  sensor.getINT1();  // clear the status registers by reading
+  sensor.getINT2();
+  numSamples = 0;
+  stateStartMillis = millis();
 }
 
-  if (irValue < 50000){
-    Serial.print(" No finger?");
-  }
+void loop() {
+  float ratio, correl;
+  int8_t ch_spo2_valid;
+  int8_t ch_hr_valid;
 
-    Serial.print("IR=");
-    Serial.print(irValue);
-    Serial.print(", BPM=");
-    Serial.print(beatsPerMinute);
-    Serial.print(", Avg BPM=");
-    Serial.print(beatAvg);
-    Serial.println();
+  sensor.check();
+  while (sensor.available()) {
+    /*
+     *
+     * Its important to swap the variable values since the current MAX30102
+     * sensor has a swapped IR & RED LED.
+     *
+     */
+    aun_red_buffer[numSamples] = sensor.getFIFOIR();
+    aun_ir_buffer[numSamples] = sensor.getFIFORed();
 
-  // Wait 100ms before taking another reading
+    numSamples++;
+    sensor.nextSample();
 
+    if (numSamples == RFA_BUFFER_SIZE) {
+      // calculate heart rate and SpO2 after RFA_BUFFER_SIZE samples (ST seconds
+      // of samples) using Robert's method
+      rf_heart_rate_and_oxygen_saturation(
+          aun_ir_buffer, RFA_BUFFER_SIZE, aun_red_buffer, &n_spo2,
+          &ch_spo2_valid, &n_heart_rate, &ch_hr_valid, &ratio, &correl);
 
- // Send every 3 seconds
-  if (millis() - lastSendTime >= 3000) {
-    //sendBPMData(beatsPerMinute, beatAvg);
-    if (beatAvg > 0) {
-      Particle.publish("bpm", String(beatAvg), PRIVATE);
+      // If spo2_valid and hr_valid are true, then we have a valid result
+      if (ch_spo2_valid && ch_hr_valid && currentState != WAIT) {
+        currentState = SEND;
+      }
+      printCurrentTime();
+
+      Serial.print("SP02 ");
+      if (ch_spo2_valid)
+        Serial.print(n_spo2);
+      else
+        Serial.print("x");
+      Serial.print(", Pulse ");
+      if (ch_hr_valid)
+        Serial.print(n_heart_rate);
+      else
+        Serial.print("x");
+      Serial.println();
+      numSamples = 0;
+      // toggle the board LED. This should happen every ST (= 4) seconds if
+      // MAX30102 has been configured correctly
     }
-    lastSendTime = millis();  // Update the last send time
   }
 
+  // Non-blocking LED flashing
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    ledState = !ledState;
 
+    switch (currentState) {
+      case REQUEST_MEASUREMENT:
+        if (currentMillis - stateStartMillis >= requestTimeout) {
+          currentState = WAIT;
+          stateStartMillis = millis();
+        } else {
+          if (ledState) {
+            RGB.color(0, 0, 255);  // blue
+          } else {
+            RGB.color(0, 0, 0);  // off
+          }
+        }
+        break;
+      case SEND:
+        if (ledState) {
+          RGB.color(0, 255, 0);  // green
+        } else {
+          RGB.color(0, 0, 0);  // off
+        }
+        sendDataParticle(n_heart_rate, n_spo2);
+        break;
+      case WAIT:
+        if (currentMillis - stateStartMillis >= waitDuration) {
+          currentState = REQUEST_MEASUREMENT;
+          stateStartMillis = millis();
+        } else {
+          if (ledState) {
+            RGB.color(128, 0, 128);  // purple
+          } else {
+            RGB.color(0, 0, 0);  // off
+          }
+          //}
+        }
+        break;
+      case SAVE_TO_EEPROM:
+        saveDataToEEPROM(n_heart_rate, n_spo2);
+        if (ledState) {
+          RGB.color(255, 255, 0);  // yellow
+        } else {
+          RGB.color(0, 0, 0);  // off
+        }
+        currentState = WAIT;
+        stateStartMillis = millis();
+        break;
+      case EMPTY:
+        if (ledState) {
+          RGB.color(0, 255, 0);  // green
+        } else {
+          RGB.color(0, 0, 0);  // off
+        }
+        break;
+    }
+  }
 }
-
-
