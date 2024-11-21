@@ -65,10 +65,18 @@ void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   Serial.println("DATA SAVED to EEPROM");
 }
 
+
+
+
 void sendDataParticle(float averageBPM, float averageSPO2) {
   if (Particle.connected()) {
     Particle.publish("bpm", String(averageBPM), PRIVATE);
     Particle.publish("spo2", String(averageSPO2), PRIVATE);
+    Particle.publish("bpm_spo2",
+                     "{\"bpm\": " + String(averageBPM) +
+                         ", \"spo2\": " + String(averageSPO2) + "}",
+                     PRIVATE);
+
     Serial.println("DATA SENT to Particle Cloud");
     dataSent = true;
     dataSentCount++;
@@ -91,6 +99,10 @@ void setup() {
   Serial.println("SPO2/Pulse meter");
   pinMode(LED, OUTPUT);
   RGB.control(true);  // take control of the RGB LED
+
+  // Print the device ID
+  Serial.print("Device ID: ");
+  Serial.println(System.deviceID());
 
   if (sensor.begin(Wire, I2C_SPEED_FAST) == false) {
     Serial.println(
