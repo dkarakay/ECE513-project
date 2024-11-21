@@ -9,17 +9,19 @@
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
     />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="javascripts/index.js"></script>
   </head>
   <body>
     <div class="container">
-      <br />
-      <br />
-      <a href="register.html" class="left brand-logo valign-wrapper"
-        >Register</a
-      >
-      <a href="login.html" class="left brand-logo valign-wrapper">Login</a>
-      <br />
-    </div>
+      <div class="auth-links" id="authLinks">
+        <a href="register.html" class="left brand-logo valign-wrapper">Register</a>
+        <a href="login.html" class="left brand-logo valign-wrapper">Login</a>
+      </div>
+      <div class="user-info" id="userInfo" style="display: none;">
+        <a href="account.html" id="userEmail" class="left brand-logo valign-wrapper"></a>
+        <a href="#" id="btnLogOut" class="left brand-logo valign-wrapper">Log Out</a>
+      </div>
 
     <h1>Project Team</h1>
     <div class="team">

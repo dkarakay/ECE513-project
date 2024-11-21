@@ -24,3 +24,18 @@ img {
   height: 300px;
 }
 
+.auth-links,
+.user-info {
+  display: none; /* Initially hide both elements */
+}
+.auth-links.show,
+.user-info.show {
+  display: flex; /* Show elements when the 'show' class is added */
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.auth-links a,
+.user-info a {
+  margin-left: 15px;
+}

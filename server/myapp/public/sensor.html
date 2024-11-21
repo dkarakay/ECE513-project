@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Sensor Data</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="javascripts/sensor.js"></script>
+    <style>
+      .latest-data {
+        font-size: 1.2em;
+        font-weight: bold;
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      .latest-data h2 {
+        font-size: 1.5em;
+        margin-bottom: 5px;
+      }
+      .all-data {
+        font-size: 1em;
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
+      <br />
+      <br />
+      <div id="latestSensorData"></div>
+      <div id="allSensorData" class="all-data"></div>
+    </div>
+  </body>
+</html>

@@ -2,20 +2,35 @@
 <html lang="en">
   <head>
     <title>ECE513 Project</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+    />
+    <script
+      type="text/javascript"
+      src="https://code.jquery.com/jquery-3.6.0.min.js"
+    ></script>
     <script src="javascripts/account.js"></script>
+    <style>
+      #welcomeMessage {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
-      <br/>
-      <br/>
+      <br />
+      <br />
       <div>
-        <button id="btnLogOut">LogOut</button>
+        <button id="btnLogOut">Log Out</button>
+        <button id="btnSensorData">View Sensor Data</button>
       </div>
+      <div id="welcomeMessage"></div>
+      <div id="deviceId"></div>
     </div>
     <script>
       (function () {
@@ -23,7 +38,11 @@
           window.location.replace("display.html");
         }
       })();
+
+      // Navigate to sensor.html when the button is clicked
+      $("#btnSensorData").click(function () {
+        window.location.href = "sensor.html";
+      });
     </script>
   </body>
 </html>
-

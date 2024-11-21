@@ -1,6 +1,35 @@
 var express = require("express");
 var router = express.Router();
 var Sensor = require("../models/sensor");
+var User = require("../models/user");
+
+const jwt = require("jwt-simple");
+const fs = require("fs");
+const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
+
+// Middleware to get the logged-in user's device ID
+async function getUserDeviceId(req, res, next) {
+  console.log(req.headers);
+  if (!req.headers["x-auth"]) {
+    console.log("Missing X-Auth header");
+    return res
+      .status(401)
+      .json({ success: false, msg: "Missing X-Auth header" });
+  }
+  const token = req.headers["x-auth"];
+  console.log("Token:", token);
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email }, "device_id");
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+    req.device_id = user.device_id;
+    next();
+  } catch (ex) {
+    res.status(401).json({ success: false, message: "Invalid JWT" });
+  }
+}
 
 // POST sensor data
 router.post("/", async function (req, res, next) {
@@ -52,18 +81,38 @@ router.post("/", async function (req, res, next) {
   }
 });
 
-// GET sensor data showing the latest entry
-router.get("/latest", async function (req, res, next) {
+// GET sensor data showing the latest entry for the logged-in user
+router.get("/latest", getUserDeviceId, async function (req, res, next) {
   try {
-    var sensor = await Sensor.findOne().sort({ _id: -1 }).exec();
+    var sensor = await Sensor.findOne({ device_id: req.device_id })
+      .sort({ _id: -1 })
+      .exec();
+    // If it is null, say that the user has no data
+    if (!sensor) {
+      return res.json({ message: "No data found" });
+    }
     res.json(sensor);
   } catch (err) {
     next(err);
   }
 });
 
-// GET sensor data showing all entries
-router.get("/", async function (req, res, next) {
+// GET sensor data showing all entries for the logged-in user
+router.get("/", getUserDeviceId, async function (req, res, next) {
+  try {
+    var sensor = await Sensor.find({ device_id: req.device_id }).exec();
+    // If it is null, say that the user has no data
+    if (!sensor) {
+      return res.json({ message: "No data found" });
+    }
+    res.json(sensor);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET all sensor data (for debug purposes)
+router.get("/all", async function (req, res, next) {
   try {
     var sensor = await Sensor.find().exec();
     res.json(sensor);

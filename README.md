@@ -18,7 +18,7 @@ Example:
 ```sh
 curl -X POST http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor \
 -H "Content-Type: application/json" \
--d '{"bpm": 65, "spo2": 75}
+-d '{"device_id":xxxx,"data":{"bpm": 65, "spo2": 75}}
 ```
 
 #### GET /sensor
@@ -41,7 +41,7 @@ curl -X GET http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/
 
 #### GET /reset
 
-Description: Reset all sensor readings.
+Description: Reset all sensor readings and user accounts
 Example:
 
 ```sh

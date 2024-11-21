@@ -1,21 +1,23 @@
-$(function (){
-    $('#btnLogOut').click(logout);
+$(function () {
+  $("#btnLogOut").click(logout);
 
-    $.ajax({
-        url: '/users/status',
-        method: 'GET',
-        headers: { 'x-auth' : window.localStorage.getItem("token") },
-        dataType: 'json'
-    })
+  $.ajax({
+    url: "/users/status",
+    method: "GET",
+    headers: { "x-auth": window.localStorage.getItem("token") },
+    dataType: "json",
+  })
     .done(function (data, textStatus, jqXHR) {
-        $('#rxData').html(JSON.stringify(data, null, 2));
+      $("#rxData").html(JSON.stringify(data, null, 2));
+      $("#welcomeMessage").html(`Welcome, ${data.email}`);
+      $("#deviceId").html(`Device ID: ${data.device_id}`);
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
-        window.location.replace("display.html");
+      window.location.replace("display.html");
     });
 });
 
 function logout() {
-    localStorage.removeItem("token");
-    window.location.replace("index.html");
-
+  localStorage.removeItem("token");
+  window.location.replace("index.html");
+}
