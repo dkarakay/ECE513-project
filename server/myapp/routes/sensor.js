@@ -5,22 +5,46 @@ var Sensor = require("../models/sensor");
 // POST sensor data
 router.post("/", async function (req, res, next) {
   try {
+    console.log(req.body);
+
+    let data = req.body.data;
+
+    // Parse data if it is a string
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (error) {
+        console.log("Invalid JSON string");
+        return res.status(400).json({ message: "Invalid JSON string" });
+      }
+    }
+
     // Check if the request body is empty
     if (!req.body) {
+      console.log("Request body is empty");
       return res.status(400).json({ message: "Request body is empty" });
     }
 
-    if (!req.body.bpm || !req.body.spo2) {
+    if (!data.bpm || !data.spo2) {
+      console.log("Missing required fields");
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    if (isNaN(req.body.bpm) || isNaN(req.body.spo2)) {
+    if (isNaN(data.bpm) || isNaN(data.spo2)) {
+      console.log("Invalid data type");
       return res.status(400).json({ message: "Invalid data type" });
     }
 
-    console.log(req.body);
+    // Create a new sensor object with the request body device_id and spo2, bpm
 
-    var sensor = new Sensor(req.body);
+    var sensor = new Sensor({
+      device_id: req.body.device_id,
+      bpm: data.bpm,
+      spo2: data.spo2,
+    });
+
+    console.log(sensor);
+
     var savedSensor = await sensor.save();
     res.status(201).json(savedSensor);
   } catch (err) {
