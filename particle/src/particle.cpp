@@ -26,9 +26,11 @@ bool dataSent = false;
 unsigned long previousMillis = 0;
 unsigned long stateStartMillis = 0;
 const long interval = 500;  // interval at which to blink (milliseconds)
-const long requestTimeout =
-    300000;                       // 5 1 minute timeout for taking measurement
-const long waitDuration = 60000;  // 1 2 minutes wait duration
+// const long requestTimeout = 300000;                       // 5 1 minute
+// timeout for taking measurement const long waitDuration = 60000;  // 1 2
+// minutes wait duration
+const long requestTimeout = 300000;  // 5 minutes timeout for taking measurement
+const long waitDuration = 1800000;   // 30 minutes wait
 bool ledState = false;
 int dataSentCount = 0;
 
@@ -64,10 +66,12 @@ void sendDataParticle(float averageBPM, float averageSPO2) {
     Serial.println("DATA SENT to Particle Cloud");
     dataSent = true;
     dataSentCount++;
-    if (dataSentCount >= 3) {
+
+    if (dataSentCount >= 2) {
       currentState = WAIT;
       stateStartMillis = millis();
       dataSentCount = 0;
+      dataSent = false;
     } else {
       currentState = EMPTY;
     }
@@ -175,12 +179,12 @@ void loop() {
         }
         break;
       case SEND:
+        sendDataParticle(n_heart_rate, n_spo2);
         if (ledState) {
           RGB.color(0, 255, 0);  // green
         } else {
           RGB.color(0, 0, 0);  // off
         }
-        sendDataParticle(n_heart_rate, n_spo2);
         break;
       case WAIT:
         if (currentMillis - stateStartMillis >= waitDuration) {
@@ -188,7 +192,8 @@ void loop() {
           stateStartMillis = millis();
         } else {
           if (ledState) {
-            RGB.color(128, 0, 128);  // purple
+            // RGB.color(128, 0, 128);  // purple
+            RGB.color(0, 0, 0);  // purple
           } else {
             RGB.color(0, 0, 0);  // off
           }
