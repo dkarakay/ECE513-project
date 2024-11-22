@@ -34,7 +34,6 @@ sh run_server_nonstop.sh
 ## Graph
 
 1. Open `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/graph.html` in your web browser.
-2. The graph will automatically display the latest sensor readings.
 3. You can choose the aggregation level for sensor data. Available options:
 
 - **Every 30 Minutes**: Aggregates data every 30 minutes.
