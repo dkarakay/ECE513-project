@@ -1,16 +1,3 @@
-/*****************************************************************
- * Pulse rate and SPO2 meter using the MAX30102
- * This is a mashup of
- * 1. sensor initialization and readout code from Sparkfun
- * https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library
- *
- *  2. spo2 & pulse rate analysis from
- * https://github.com/aromring/MAX30102_by_RF
- * (algorithm by  Robert Fraczkiewicz)
- * I tweaked this to use 50Hz sample rate
- *
- ******************************************************************/
-
 #include "Particle.h"
 
 #include <Wire.h>
@@ -65,9 +52,6 @@ void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   Serial.println("DATA SAVED to EEPROM");
 }
 
-
-
-
 void sendDataParticle(float averageBPM, float averageSPO2) {
   if (Particle.connected()) {
     Particle.publish("bpm", String(averageBPM), PRIVATE);
@@ -107,17 +91,11 @@ void setup() {
   if (sensor.begin(Wire, I2C_SPEED_FAST) == false) {
     Serial.println(
         "Error: MAX30102 not found, try cycling power to the board...");
-    // indicate fault by blinking the board LED rapidly
     while (1) {
       delay(100);
     }
   }
-  // ref Maxim AN6409, average dc value of signal should be within 0.25 to 0.75
-  // 18-bit range (max value = 262143) You should test this as per the app note
-  // depending on application : finger, forehead, earlobe etc. It even depends
-  // on skin tone. I found that the optimum combination for my index finger was
-  // : ledBrightness=30 and adcRange=2048, to get max dynamic range in the
-  // waveform, and a dc level > 100000
+
   byte ledBrightness = 30;  // 0 = off,  255 = 50mA
   byte sampleAverage = 4;   // 1, 2, 4, 8, 16, 32
   byte ledMode =
@@ -141,12 +119,6 @@ void loop() {
 
   sensor.check();
   while (sensor.available()) {
-    /*
-     *
-     * Its important to swap the variable values since the current MAX30102
-     * sensor has a swapped IR & RED LED.
-     *
-     */
     aun_red_buffer[numSamples] = sensor.getFIFOIR();
     aun_ir_buffer[numSamples] = sensor.getFIFORed();
 
