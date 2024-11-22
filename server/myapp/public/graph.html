@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -47,26 +47,35 @@
         let sensorChartInstance = null;
 
         document.getElementById('graphButton').addEventListener('click', function() {
-            const startTimeInput = document.getElementById('startTime').value;
-            const endTimeInput = document.getElementById('endTime').value;
             const aggregation = document.getElementById('aggregation').value;
 
-            if (!startTimeInput || !endTimeInput) {
-                alert('Please select both start and end times.');
-                return;
-            }
+            let startTime, endTime;
 
-            const startTime = new Date(startTimeInput);
-            const endTime = new Date(endTimeInput);
+            if (aggregation === '30') {
+                // For '30 Minutes' aggregation, set startTime to 30 minutes ago and endTime to now
+                endTime = new Date();
+                startTime = new Date(endTime.getTime() - 30 * 60 * 1000);
+            } else {
+                const startTimeInput = document.getElementById('startTime').value;
+                const endTimeInput = document.getElementById('endTime').value;
 
-            if (isNaN(startTime) || isNaN(endTime)) {
-                alert('Invalid date format.');
-                return;
-            }
+                if (!startTimeInput || !endTimeInput) {
+                    alert('Please select both start and end times.');
+                    return;
+                }
 
-            if (startTime >= endTime) {
-                alert('Start time must be before end time.');
-                return;
+                startTime = new Date(startTimeInput);
+                endTime = new Date(endTimeInput);
+
+                if (isNaN(startTime) || isNaN(endTime)) {
+                    alert('Invalid date format.');
+                    return;
+                }
+
+                if (startTime >= endTime) {
+                    alert('Start time must be before end time.');
+                    return;
+                }
             }
 
             const url = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
@@ -141,7 +150,9 @@
                                     title: {
                                         display: true,
                                         text: 'Time'
-                                    }
+                                    },
+                                    min: startTime,
+                                    max: endTime
                                 },
                                 y: { 
                                     type: 'linear',
@@ -188,6 +199,15 @@
          * @returns {Array} - Aggregated data with averages.
          */
         function aggregateData(data, aggregation) {
+            if (aggregation === '30') {
+                // No aggregation for last 30 minutes, use data as is
+                return data.map(entry => ({
+                    interval: entry.created_at,
+                    avgSpo2: entry.spo2,
+                    avgBpm: entry.bpm
+                }));
+            }
+
             const grouped = {};
             let invalidEntries = 0;
 
@@ -207,11 +227,7 @@
 
                 let key;
 
-                if (aggregation === '30') {
-                    // Round down to the nearest 30 minutes
-                    date.setMinutes(Math.floor(date.getMinutes() / 30) * 30, 0, 0);
-                    key = date.toISOString();
-                } else if (aggregation === 'daily') {
+                if (aggregation === 'daily') {
                     // Group by day
                     key = date.toISOString().split('T')[0];
                 } else if (aggregation === 'weekly') {
@@ -292,13 +308,6 @@
             if (aggregation === 'weekly') return 'week';
             return 'minute';
         }
-        // Add loadGraphData function here
-        function loadGraphData() {
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
-            const aggregation = document.getElementById('aggregation').value;
-            drawGraph(startTime, endTime, aggregation);
-        }
 
         window.onload = function() {
             const now = new Date();
@@ -315,9 +324,6 @@
 
             // Set default aggregation to 'daily'
             aggregationElem.value = 'daily';
-            
-            // Load the graph data
-            loadGraphData();
         };
     </script>
 </body>
