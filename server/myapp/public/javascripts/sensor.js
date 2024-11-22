@@ -15,8 +15,21 @@ $(document).ready(function () {
     dataType: "json",
   })
     .done(function (data, textStatus, jqXHR) {
-      // Display the sensor data in a fancy way
-      $("#latestSensorData").html(`
+      if (
+        data.bpm === undefined ||
+        data.spo2 === undefined ||
+        data.device_id === undefined ||
+        data.created_at === undefined
+      ) {
+        $("#latestSensorData").html(`
+          <div class="latest-data">
+            <h2>Latest Sensor Data</h2>
+            <p>No data available</p>
+          </div>
+        `);
+      } else {
+        // Display the sensor data in a fancy way
+        $("#latestSensorData").html(`
         <div class="latest-data">
           <h2>Latest Sensor Data</h2>
           <p><strong>BPM:</strong> ${data.bpm}</p>
@@ -27,6 +40,7 @@ $(document).ready(function () {
           ).toLocaleString()}</p>
         </div>
       `);
+      }
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
       console.error("Error fetching latest sensor data:", errorThrown);
