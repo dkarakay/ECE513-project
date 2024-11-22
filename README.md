@@ -9,8 +9,7 @@
 
 [![Watch the video](https://img.youtube.com/vi/vwafzZx3cuQ/0.jpg)](https://www.youtube.com/watch?v=vwafzZx3cuQ)
 
-
-## Server
+## Server [Link](http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/)
 
 `server/`
 
