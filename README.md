@@ -6,9 +6,15 @@
 
 ### Running Server
 
-In order to run the server, run `sh run_server.sh`
+In order to run the server, run 
+```sh 
+sh run_server.sh
+```
 
-In order to run the server continuously, run `sh run_server_nonstop.sh`
+In order to run the server continuously, run 
+```sh
+sh run_server_nonstop.sh
+```
 
 ### Endpoints
 
