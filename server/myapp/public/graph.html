@@ -69,7 +69,7 @@
                 return;
             }
 
-            const url = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
+            const url = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
             console.log('Fetching data from:', url);
 
             fetch(url)
