@@ -5,6 +5,11 @@
 - Serhat Furkan Bozkurt
 - Hasan Umut Suluhan
 
+## Milestone Demo Video
+
+[![Watch the video](https://img.youtube.com/vi/vwafzZx3cuQ/0.jpg)](https://www.youtube.com/watch?v=vwafzZx3cuQ)
+
+
 ## Server
 
 `server/`
