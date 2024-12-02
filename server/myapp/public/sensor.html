@@ -8,6 +8,7 @@
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
     />
+    <link rel="stylesheet" href="stylesheets/style.css" />
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="javascripts/sensor.js"></script>
     <style>
@@ -36,6 +37,11 @@
     <div class="container">
       <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
       <br />
+      <br />
+      <div class="form-group form-inline">
+        <label for="deviceSelect">Select Device:</label>
+        <select id="deviceSelect" class="form-control"></select>
+      </div>
       <br />
       <div id="latestSensorData"></div>
       <div id="allSensorData" class="all-data"></div>
