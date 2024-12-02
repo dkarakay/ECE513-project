@@ -6,6 +6,27 @@ var User = require("../models/user");
 const jwt = require("jwt-simple");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
+const API_KEY = fs.readFileSync(__dirname + "/../keys/apikey").toString();
+
+// Middleware to check for API key
+function checkApiKey(req, res, next) {
+  var apiKey = req.headers["x-api-key"];
+  // String trimming
+  apiKey = apiKey.trim();
+  console.log("API Key:", apiKey);
+  console.log("Expected API Key:", API_KEY);
+
+  console.log("Type of API Key:", typeof apiKey);
+  console.log("Type of Expected API Key:", typeof API_KEY);
+
+  if (!apiKey) {
+    return res.status(401).json({ success: false, msg: "Missing API key" });
+  }
+  if (apiKey !== API_KEY) {
+    return res.status(401).json({ success: false, msg: "Invalid API key" });
+  }
+  next();
+}
 
 // Middleware to get the logged-in user's device IDs
 async function getUserDeviceIds(req, res, next) {
@@ -32,7 +53,7 @@ async function getUserDeviceIds(req, res, next) {
 }
 
 // POST sensor data
-router.post("/", async function (req, res, next) {
+router.post("/", checkApiKey, async function (req, res, next) {
   try {
     console.log(req.body);
 
