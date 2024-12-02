@@ -121,4 +121,14 @@ router.get("/all", async function (req, res, next) {
   }
 });
 
+// Get sensor data by device_id
+router.get("/device/:device_id", async function (req, res, next) {
+  try {
+    var sensor = await Sensor.find({ device_id: req.params.device_id }).exec();
+    res.json(sensor);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

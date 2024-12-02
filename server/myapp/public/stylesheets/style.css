@@ -4,7 +4,7 @@ body {
 }
 
 a {
-  color: #00B7FF;
+  color: #3370e2;
 }
 
 .strength-wrapper {
@@ -15,4 +15,49 @@ a {
 
 .strength {
   color: #555;
+}
+
+/* Account */
+#welcomeMessage {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: inline-block;
+  width: 250px;
+  text-align: right;
+  margin-right: 10px;
+}
+
+.form-group input,
+.form-group select {
+  width: 400px;
+}
+
+.form-inline {
+  display: flex;
+  align-items: center;
+}
+
+.form-inline label {
+  margin-right: 10px;
+}
+
+.form-inline select {
+  margin-right: 10px;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
 }

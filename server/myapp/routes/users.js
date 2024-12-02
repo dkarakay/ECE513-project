@@ -22,7 +22,15 @@ router.post("/register", async function (req, res) {
     const newUser = new User({
       email: req.body.email,
       passwordHash: passwordHash,
-      device_id: req.body.device_id,
+      devices: [
+        {
+          device_id: req.body.device_id,
+          measurementInterval: 30,
+          startTime: "06:00",
+          endTime: "22:00",
+        },
+      ],
+      createdAt: new Date(),
     });
 
     // Save the new user
@@ -97,21 +105,21 @@ router.get("/status", async function (req, res) {
   }
 });
 
-router.post('/update-password', async (req, res) => {
+router.post("/update-password", async (req, res) => {
   const currentPassword = req.body.currentPassword;
-  const newPassword =  req.body.newPassword;
+  const newPassword = req.body.newPassword;
 
   if (!currentPassword || !newPassword) {
-    return res.status(400).send('Current and new password are required.');
+    return res.status(400).send("Current and new password are required.");
   }
 
-  const token = req.header('x-auth');
+  const token = req.header("x-auth");
   if (!token) {
-    return res.status(401).send('Access denied. No token provided.');
+    return res.status(401).send("Access denied. No token provided.");
   }
 
   try {
-    const decoded = jwt.decode(token, secret); 
+    const decoded = jwt.decode(token, secret);
     const user = await User.findOne(
       { email: decoded.email },
       "email passwordHash"
@@ -122,7 +130,7 @@ router.post('/update-password', async (req, res) => {
 
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).send('Current password is incorrect.');
+      return res.status(400).send("Current password is incorrect.");
     }
 
     const new_passwordHash = bcrypt.hashSync(newPassword, 10);
@@ -131,9 +139,187 @@ router.post('/update-password', async (req, res) => {
     user.passwordHash = new_passwordHash;
     await user.save();
 
-    res.send('Password updated successfully.');
+    res.send("Password updated successfully.");
   } catch (error) {
-    res.status(500).send('Server error.');
+    res.status(500).send("Server error.");
+  }
+});
+router.post("/update-measurement-settings", async (req, res) => {
+  const { device_id, measurementInterval, startTime, endTime } = req.body;
+
+  if (!device_id || !measurementInterval || !startTime || !endTime) {
+    return res
+      .status(400)
+      .send(
+        "Device ID, measurement interval, start time, and end time are required."
+      );
+  }
+
+  const token = req.header("x-auth");
+  if (!token) {
+    return res.status(401).send("Access denied. No token provided.");
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    // Find the device by device_id
+    const device = user.devices.find((d) => d.device_id === device_id);
+    if (!device) {
+      return res.status(404).json({ success: false, msg: "Device not found" });
+    }
+
+    // Update the device's measurement settings
+    device.measurementInterval = parseInt(measurementInterval);
+    device.startTime = startTime;
+    device.endTime = endTime;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Measurement settings updated successfully!",
+    });
+  } catch (error) {
+    res.status(500).send("Server error.");
+  }
+});
+
+router.get("/measurement-settings/:device_id", async (req, res) => {
+  const token = req.header("x-auth");
+  if (!token) {
+    return res.status(401).send("Access denied. No token provided.");
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    // Find the device by device_id
+    const device = user.devices.find(
+      (d) => d.device_id === req.params.device_id
+    );
+    if (!device) {
+      return res.status(404).json({ success: false, msg: "Device not found" });
+    }
+
+    res.status(200).json({
+      measurementInterval: device.measurementInterval,
+      startTime: device.startTime,
+      endTime: device.endTime,
+    });
+  } catch (error) {
+    res.status(500).send("Server error.");
+  }
+});
+
+// Get current user
+router.get("/me", async function (req, res) {
+  const token = req.header("x-auth");
+  if (!token) {
+    return res.status(401).send("Access denied. No token provided.");
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email }, "email devices");
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+    console.log(user);
+    res.status(200).json({ email: user.email, devices: user.devices });
+  } catch (error) {
+    res.status(500).send("Server error.");
+  }
+});
+
+router.post("/add-device", async (req, res) => {
+  const { device_id, measurementInterval, startTime, endTime } = req.body;
+
+  if (!device_id || !measurementInterval || !startTime || !endTime) {
+    return res
+      .status(400)
+      .send(
+        "Device ID, measurement interval, start time, and end time are required."
+      );
+  }
+
+  const token = req.header("x-auth");
+  if (!token) {
+    return res.status(401).send("Access denied. No token provided.");
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    // Check if the device already exists
+    const existingDevice = user.devices.find((d) => d.device_id === device_id);
+    if (existingDevice) {
+      return res
+        .status(400)
+        .json({ success: false, msg: "Device already exists" });
+    }
+
+    // Add the new device
+    user.devices.push({
+      device_id,
+      measurementInterval: parseInt(measurementInterval),
+      startTime,
+      endTime,
+    });
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Device added successfully!",
+      device_id,
+    });
+  } catch (error) {
+    res.status(500).send("Server error.");
+  }
+});
+
+router.delete("/delete-device/:device_id", async (req, res) => {
+  const token = req.header("x-auth");
+  if (!token) {
+    return res.status(401).send("Access denied. No token provided.");
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    // Find the device by device_id
+    const deviceIndex = user.devices.findIndex(
+      (d) => d.device_id === req.params.device_id
+    );
+    if (deviceIndex === -1) {
+      return res.status(404).json({ success: false, msg: "Device not found" });
+    }
+
+    // Remove the device
+    user.devices.splice(deviceIndex, 1);
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Device deleted successfully!",
+    });
+  } catch (error) {
+    res.status(500).send("Server error.");
   }
 });
 
@@ -141,6 +327,36 @@ router.get("/", async function (req, res, next) {
   try {
     var user = await User.find().exec();
     res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get device details by device_id
+router.get("/device/:device_id", async function (req, res, next) {
+  try {
+    var user = await User.findOne({
+      "devices.device_id": req.params.device_id,
+    }).exec();
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    // Find the device by device_id
+    const device = user.devices.find(
+      (d) => d.device_id === req.params.device_id
+    );
+    if (!device) {
+      return res.status(404).json({ success: false, msg: "Device not found" });
+    }
+
+    // Return the device details
+    res.json({
+      device_id: device.device_id,
+      measurementInterval: device.measurementInterval,
+      startTime: device.startTime,
+      endTime: device.endTime,
+    });
   } catch (err) {
     next(err);
   }
