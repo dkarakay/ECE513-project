@@ -15,6 +15,10 @@ function login() {
         window.location.replace("account.html");
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
+        if (jqXHR.status === 401) {
+            window.alert("Invalid email or password");
+            return;
+        }
         $('#rxData').html(JSON.stringify(jqXHR, null, 2));
     });
 }
