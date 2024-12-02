@@ -1,7 +1,9 @@
 #include "Particle.h"
 
+#include <HttpClient.h>
 #include <Wire.h>
 
+#include "JsonParserGeneratorRK.h"
 #include "MAX30105.h"
 #include "algorithm_by_RF.h"
 
@@ -30,11 +32,79 @@ const long interval = 500;  // interval at which to blink (milliseconds)
 // timeout for taking measurement const long waitDuration = 60000;  // 1 2
 // minutes wait duration
 const long requestTimeout = 300000;  // 5 minutes timeout for taking measurement
-const long waitDuration = 1800000;   // 30 minutes wait
+unsigned long measurementInterval = 1800000;  // 30 minutes wait
 bool ledState = false;
 int dataSentCount = 0;
 
-String processor(const String& var) {
+unsigned long firstSaveTimestamp = 0;
+String startTime = "06:00";
+String endTime = "22:00";
+int eepromDataCount = 0;
+
+HttpClient http;
+http_request_t request;
+http_response_t response;
+JsonParserStatic<1024, 20> parser1;
+
+int timeToMinutes(const char *time) {
+  int hours = (time[0] - '0') * 10 + (time[1] - '0');
+  int minutes = (time[3] - '0') * 10 + (time[4] - '0');
+  return hours * 60 + minutes;
+}
+
+int getCurrentTimeInMinutes() {
+  int currentHour = Time.hour();
+  int currentMinute = Time.minute();
+  return currentHour * 60 + currentMinute;
+}
+
+void getConfigFromServer() {
+  if (Particle.connected()) {
+    // Configure the request
+    request.hostname = "ec2-3-143-111-57.us-east-2.compute.amazonaws.com";
+    request.port = 3000;  // Your server's port
+    request.path = "/users/device/" + System.deviceID();
+    // Send the GET request
+    http.get(request, response);
+
+    // Check response status
+    if (response.status == 200) {
+      parser1.clear();
+      parser1.addString(response.body);
+      // Parse the JSON response
+      if (parser1.parse()) {
+        // Print measurementInterval, startTime, and endTime
+        measurementInterval =
+            parser1.getReference().key("measurementInterval").valueInt() *
+            60000;
+        startTime = parser1.getReference().key("startTime").valueString();
+        endTime = parser1.getReference().key("endTime").valueString();
+        Serial.println("Configuration received from server");
+        Serial.print("Measurement Interval: ");
+        Serial.println(measurementInterval);
+        Serial.print("Start Time: ");
+        Serial.println(startTime);
+        Serial.print("End Time: ");
+        Serial.println(endTime);
+
+      } else {
+        Serial.println("Failed to parse JSON response.");
+      }
+    } else {
+      Serial.print("Status code: ");
+      Serial.println(response.status);
+    }
+  } else {
+    Serial.println("Not connected to the cloud");
+  }
+}
+
+void configUpdateHandler(const char *event, const char *data) {
+  Serial.println("Received configuration update event");
+  getConfigFromServer();
+}
+
+String processor(const String &var) {
   if (var == "SPO2") {
     return n_spo2 > 0 ? String(n_spo2) : String("00.00");
   } else if (var == "HEARTRATE") {
@@ -45,12 +115,14 @@ String processor(const String& var) {
 
 void printCurrentTime() {
   Serial.print("Current time: ");
-  Serial.println(Time.format(Time.now(), "%H:%M:%S"));
+  Serial.println(Time.format(Time.now(), "%Y-%m-%d %H:%M:%S"));
 }
 
 void saveDataToEEPROM(float averageBPM, float averageSPO2) {
-  EEPROM.put(0, averageBPM);
-  EEPROM.put(sizeof(float), averageSPO2);
+  int address = eepromDataCount * sizeof(float) * 2;
+  EEPROM.put(address, averageBPM);
+  EEPROM.put(address + sizeof(float), averageSPO2);
+  eepromDataCount++;
   Serial.println("DATA SAVED to EEPROM");
 }
 
@@ -81,10 +153,41 @@ void sendDataParticle(float averageBPM, float averageSPO2) {
   }
 }
 
+void submitStoredData() {
+  for (int i = 0; i < eepromDataCount; i++) {
+    int address = i * sizeof(float) * 2;
+    float storedBPM, storedSPO2;
+    EEPROM.get(address, storedBPM);
+    EEPROM.get(address + sizeof(float), storedSPO2);
+
+    Particle.publish("bpm", String(storedBPM), PRIVATE);
+    Particle.publish("spo2", String(storedSPO2), PRIVATE);
+    Particle.publish("bpm_spo2",
+                     "{\"bpm\": " + String(storedBPM) +
+                         ", \"spo2\": " + String(storedSPO2) + "}",
+                     PRIVATE);
+
+    Serial.println("STORED DATA SENT to Particle Cloud");
+  }
+  eepromDataCount = 0;  // Reset the count after submitting all data
+}
+
+void checkAndResetEEPROM() {
+  unsigned long currentMillis = millis();
+  if (firstSaveTimestamp != 0 &&
+      (currentMillis - firstSaveTimestamp >=
+       86400000)) {  // 24 hours = 86400000 milliseconds
+    eepromDataCount = 0;
+    firstSaveTimestamp = 0;
+    Serial.println("24 hours passed. EEPROM data reset.");
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.println("SPO2/Pulse meter");
+  Time.zone(-7);  // Set time zone to MST (UTC-7)
   pinMode(LED, OUTPUT);
   RGB.control(true);  // take control of the RGB LED
 
@@ -114,6 +217,8 @@ void setup() {
   sensor.getINT2();
   numSamples = 0;
   stateStartMillis = millis();
+
+  // Particle.subscribe("configUpdate", configUpdateHandler);
 }
 
 void loop() {
@@ -130,8 +235,8 @@ void loop() {
     sensor.nextSample();
 
     if (numSamples == RFA_BUFFER_SIZE) {
-      // calculate heart rate and SpO2 after RFA_BUFFER_SIZE samples (ST seconds
-      // of samples) using Robert's method
+      // calculate heart rate and SpO2 after RFA_BUFFER_SIZE samples (ST
+      // seconds of samples) using Robert's method
       rf_heart_rate_and_oxygen_saturation(
           aun_ir_buffer, RFA_BUFFER_SIZE, aun_red_buffer, &n_spo2,
           &ch_spo2_valid, &n_heart_rate, &ch_hr_valid, &ratio, &correl);
@@ -153,6 +258,7 @@ void loop() {
       else
         Serial.print("x");
       Serial.println();
+      getConfigFromServer();
       numSamples = 0;
       // toggle the board LED. This should happen every ST (= 4) seconds if
       // MAX30102 has been configured correctly
@@ -165,58 +271,71 @@ void loop() {
     previousMillis = currentMillis;
     ledState = !ledState;
 
-    switch (currentState) {
-      case REQUEST_MEASUREMENT:
-        if (currentMillis - stateStartMillis >= requestTimeout) {
+    int currentTimeInMinutes = getCurrentTimeInMinutes();
+    int startTimeInMinutes = timeToMinutes(startTime);
+    int endTimeInMinutes = timeToMinutes(endTime);
+
+    if (currentTimeInMinutes >= startTimeInMinutes &&
+        currentTimeInMinutes <= endTimeInMinutes) {
+      switch (currentState) {
+        case REQUEST_MEASUREMENT:
+          if (currentMillis - stateStartMillis >= requestTimeout) {
+            currentState = WAIT;
+            stateStartMillis = millis();
+          } else {
+            if (ledState) {
+              RGB.color(0, 0, 255);  // blue
+            } else {
+              RGB.color(0, 0, 0);  // off
+            }
+          }
+          break;
+        case SEND:
+          sendDataParticle(n_heart_rate, n_spo2);
+          if (ledState) {
+            RGB.color(0, 255, 0);  // green
+          } else {
+            RGB.color(0, 0, 0);  // off
+          }
+          break;
+        case WAIT:
+          if (currentMillis - stateStartMillis >= measurementInterval) {
+            currentState = REQUEST_MEASUREMENT;
+            stateStartMillis = millis();
+          } else {
+            if (ledState) {
+              RGB.color(0, 0, 0);  // off
+            } else {
+              RGB.color(0, 0, 0);  // off
+            }
+          }
+          break;
+        case SAVE_TO_EEPROM:
+          saveDataToEEPROM(n_heart_rate, n_spo2);
+          if (ledState) {
+            RGB.color(255, 255, 0);  // yellow
+          } else {
+            RGB.color(0, 0, 0);  // off
+          }
           currentState = WAIT;
           stateStartMillis = millis();
-        } else {
+          break;
+        case EMPTY:
           if (ledState) {
-            RGB.color(0, 0, 255);  // blue
+            RGB.color(0, 255, 0);  // green
           } else {
             RGB.color(0, 0, 0);  // off
           }
-        }
-        break;
-      case SEND:
-        sendDataParticle(n_heart_rate, n_spo2);
-        if (ledState) {
-          RGB.color(0, 255, 0);  // green
-        } else {
-          RGB.color(0, 0, 0);  // off
-        }
-        break;
-      case WAIT:
-        if (currentMillis - stateStartMillis >= waitDuration) {
-          currentState = REQUEST_MEASUREMENT;
-          stateStartMillis = millis();
-        } else {
-          if (ledState) {
-            // RGB.color(128, 0, 128);  // purple
-            RGB.color(0, 0, 0);  // purple
-          } else {
-            RGB.color(0, 0, 0);  // off
-          }
-          //}
-        }
-        break;
-      case SAVE_TO_EEPROM:
-        saveDataToEEPROM(n_heart_rate, n_spo2);
-        if (ledState) {
-          RGB.color(255, 255, 0);  // yellow
-        } else {
-          RGB.color(0, 0, 0);  // off
-        }
-        currentState = WAIT;
-        stateStartMillis = millis();
-        break;
-      case EMPTY:
-        if (ledState) {
-          RGB.color(0, 255, 0);  // green
-        } else {
-          RGB.color(0, 0, 0);  // off
-        }
-        break;
+          break;
+      }
+    } else {
+      RGB.color(128, 64, 0);  // brown
     }
   }
+  // Check for Wi-Fi connection and submit stored data if connected
+  if (Particle.connected() && eepromDataCount > 0) {
+    submitStoredData();
+  }
+
+  checkAndResetEEPROM();
 }
