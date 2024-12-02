@@ -1,8 +1,8 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sensor Data Graph</title>
+    <title>Sensor Data Visualization</title>
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Date Adapter (date-fns) -->
@@ -15,60 +15,175 @@
         label, select, input, button {
             margin: 5px;
         }
-        #sensorChart {
+        /* Header Styling */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        /* Home Button Styling */
+        #homeButton {
+            padding: 8px 16px;
+            background-color: #007BFF; /* Bootstrap Primary Blue */
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #homeButton:hover {
+            background-color: #0056b3;
+        }
+        /* Control Panel Styling */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .controls > div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        /* Summary and Charts Sections */
+        #weeklySummary, #dailyCharts {
+            max-width: 800px;
+            margin-top: 20px;
+        }
+        .summary-item {
+            margin: 5px 0;
+        }
+        /* Canvas Styling */
+        canvas {
             max-width: 800px;
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Sensor Data Graph</h1>
-    
-    <div>
-        <label for="startTime">Start Time:</label>
-        <input type="datetime-local" id="startTime" name="startTime">
-        
-        <label for="endTime">End Time:</label>
-        <input type="datetime-local" id="endTime" name="endTime">
-        
-        <label for="aggregation">Aggregation:</label>
-        <select id="aggregation" name="aggregation">
-            <option value="30">30 Minutes</option>
-            <option value="daily" selected>Daily</option>
-            <option value="weekly">Weekly</option>
-        </select>
-        
-        <button id="graphButton">Graph</button>
+    <!-- Header Section with Home Button -->
+    <div class="header">
+        <h1>Sensor Data Visualization</h1>
+        <!-- Home Button -->
+        <a href="http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/index.html" id="homeButton">Home</a>
     </div>
     
-    <canvas id="sensorChart"></canvas>
+    <!-- Control Panel -->
+    <div class="controls">
+        <!-- View Selection -->
+        <div>
+            <label for="viewType">View:</label>
+            <select id="viewType" name="viewType">
+                <option value="weekly">Weekly Summary</option>
+                <option value="daily">Detailed Daily</option>
+            </select>
+        </div>
+        
+        <!-- Date Selection (Visible only for Detailed Daily View) -->
+        <div id="datePickerContainer" style="display: none;">
+            <label for="selectedDate">Select Date:</label>
+            <input type="date" id="selectedDate" name="selectedDate">
+        </div>
+        
+        <!-- Time-of-Day Range -->
+        <div>
+            <label for="startTime">Start Time:</label>
+            <input type="time" id="startTime" name="startTime" value="00:00">
+            
+            <label for="endTime">End Time:</label>
+            <input type="time" id="endTime" name="endTime" value="23:59">
+        </div>
+        
+        <!-- Measurement Frequency -->
+        <div>
+            <label for="frequency">Measurement Frequency (minutes):</label>
+            <select id="frequency" name="frequency">
+                <option value="15">15</option>
+                <option value="30" selected>30</option>
+                <option value="60">60</option>
+            </select>
+        </div>
+        
+        <!-- Generate View Button -->
+        <div>
+            <button id="generateView">Generate View</button>
+        </div>
+    </div>
+    
+    <!-- Weekly Summary Section -->
+    <div id="weeklySummary" style="display: none;">
+        <h2>Weekly Summary (Past 7 Days)</h2>
+        <div class="summary-item"><strong>Average Heart Rate:</strong> <span id="avgHeartRate">--</span> BPM</div>
+        <div class="summary-item"><strong>Minimum Heart Rate:</strong> <span id="minHeartRate">--</span> BPM</div>
+        <div class="summary-item"><strong>Maximum Heart Rate:</strong> <span id="maxHeartRate">--</span> BPM</div>
+    </div>
+    
+    <!-- Detailed Daily Charts Section -->
+    <div id="dailyCharts" style="display: none;">
+        <h2>Detailed Daily View</h2>
+        <canvas id="heartRateChart"></canvas>
+        <canvas id="spo2Chart"></canvas>
+    </div>
     
     <script>
-        let sensorChartInstance = null;
+        let heartRateChart = null;
+        let spo2Chart = null;
 
-        document.getElementById('graphButton').addEventListener('click', function() {
-            const aggregation = document.getElementById('aggregation').value;
+        // Toggle visibility of date picker based on view type
+        document.getElementById('viewType').addEventListener('change', function() {
+            const view = this.value;
+            const datePicker = document.getElementById('datePickerContainer');
+            if (view === 'daily') {
+                datePicker.style.display = 'flex';
+            } else {
+                datePicker.style.display = 'none';
+            }
+        });
 
+        // Event listener for Generate View button
+        document.getElementById('generateView').addEventListener('click', function() {
+            const viewType = document.getElementById('viewType').value;
+            const frequency = parseInt(document.getElementById('frequency').value);
+            const startTimeInput = document.getElementById('startTime').value;
+            const endTimeInput = document.getElementById('endTime').value;
+
+            // Validate time inputs
+            if (!startTimeInput || !endTimeInput) {
+                alert('Please specify both start and end times.');
+                return;
+            }
+
+            const startTimeParts = startTimeInput.split(':').map(Number);
+            const endTimeParts = endTimeInput.split(':').map(Number);
+
+            if (startTimeParts.length !== 2 || endTimeParts.length !== 2) {
+                alert('Invalid time format.');
+                return;
+            }
+
+            // Initialize start and end times
             let startTime, endTime;
 
-            if (aggregation === '30') {
-                // For '30 Minutes' aggregation, set startTime to 30 minutes ago and endTime to now
-                endTime = new Date();
-                startTime = new Date(endTime.getTime() - 30 * 60 * 1000);
-            } else {
-                const startTimeInput = document.getElementById('startTime').value;
-                const endTimeInput = document.getElementById('endTime').value;
-
-                if (!startTimeInput || !endTimeInput) {
-                    alert('Please select both start and end times.');
+            if (viewType === 'weekly') {
+                endTime = new Date(); // Current time
+                startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+            } else if (viewType === 'daily') {
+                const selectedDate = document.getElementById('selectedDate').value;
+                if (!selectedDate) {
+                    alert('Please select a date for Detailed Daily View.');
                     return;
                 }
-
-                startTime = new Date(startTimeInput);
-                endTime = new Date(endTimeInput);
+                const [year, month, day] = selectedDate.split('-').map(Number);
+                startTime = new Date(year, month - 1, day, startTimeParts[0], startTimeParts[1]);
+                endTime = new Date(year, month - 1, day, endTimeParts[0], endTimeParts[1]);
 
                 if (isNaN(startTime) || isNaN(endTime)) {
-                    alert('Invalid date format.');
+                    alert('Invalid date or time.');
                     return;
                 }
 
@@ -78,10 +193,12 @@
                 }
             }
 
-            const url = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
-            console.log('Fetching data from:', url);
+            // Construct API URL with parameters
+            const apiUrl = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}&frequency=${frequency}`;
+            console.log('Fetching data from:', apiUrl);
 
-            fetch(url)
+            // Fetch data from API
+            fetch(apiUrl)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -95,96 +212,11 @@
                         return;
                     }
 
-                    // Process data based on aggregation
-                    const aggregatedData = aggregateData(data, aggregation);
-                    if (aggregatedData.length === 0) {
-                        alert('No valid data available after aggregation.');
-                        return;
+                    if (viewType === 'weekly') {
+                        displayWeeklySummary(data);
+                    } else if (viewType === 'daily') {
+                        displayDetailedDailyView(data, startTime, endTime);
                     }
-                    const labels = aggregatedData.map(entry => entry.interval);
-                    const spo2Values = aggregatedData.map(entry => entry.avgSpo2);
-                    const bpmValues = aggregatedData.map(entry => entry.avgBpm);
-
-                    const ctx = document.getElementById('sensorChart').getContext('2d');
-
-                    if (sensorChartInstance) {
-                        sensorChartInstance.destroy();
-                    }
-
-                    sensorChartInstance = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Average SpO2',
-                                    data: spo2Values,
-                                    borderColor: 'rgba(75, 192, 192, 1)',
-                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                    yAxisID: 'y',
-                                    fill: true
-                                },
-                                {
-                                    label: 'Average BPM',
-                                    data: bpmValues,
-                                    borderColor: 'rgba(255, 99, 132, 1)',
-                                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                                    yAxisID: 'y1',
-                                    fill: true
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            interaction: {
-                                mode: 'index',
-                                intersect: false,
-                            },
-                            stacked: false,
-                            scales: {
-                                x: { 
-                                    type: 'time', 
-                                    time: { 
-                                        unit: getTimeUnit(aggregation) 
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: 'Time'
-                                    },
-                                    min: startTime,
-                                    max: endTime
-                                },
-                                y: { 
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'left',
-                                    title: {
-                                        display: true,
-                                        text: 'SpO2'
-                                    },
-                                    beginAtZero: true
-                                },
-                                y1: { 
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'right',
-                                    title: {
-                                        display: true,
-                                        text: 'BPM'
-                                    },
-                                    grid: {
-                                        drawOnChartArea: false,
-                                    },
-                                    beginAtZero: true
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: true
-                                }
-                            }
-                        }
-                    });
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
@@ -193,137 +225,297 @@
         });
 
         /**
-         * Aggregates data based on the selected interval.
-         * @param {Array} data - The fetched sensor data.
-         * @param {string} aggregation - The aggregation interval ('30', 'daily', 'weekly').
-         * @returns {Array} - Aggregated data with averages.
+         * Displays the Weekly Summary View.
+         * Calculates and shows average, min, and max heart rate over the past 7 days.
+         * @param {Array} data - Array of sensor data objects.
          */
-        function aggregateData(data, aggregation) {
-            if (aggregation === '30') {
-                // No aggregation for last 30 minutes, use data as is
-                return data.map(entry => ({
-                    interval: entry.created_at,
-                    avgSpo2: entry.spo2,
-                    avgBpm: entry.bpm
-                }));
+        function displayWeeklySummary(data) {
+            // Filter heart rate data
+            const heartRates = data
+                .filter(entry => typeof entry.bpm === 'number')
+                .map(entry => entry.bpm);
+
+            if (heartRates.length === 0) {
+                alert('No valid heart rate data available.');
+                return;
             }
 
-            const grouped = {};
-            let invalidEntries = 0;
+            // Calculate statistics
+            const averageHR = calculateAverage(heartRates);
+            const minHR = Math.min(...heartRates);
+            const maxHR = Math.max(...heartRates);
 
-            data.forEach(entry => {
-                if (!entry.created_at) {
-                    console.warn('Invalid timestamp:', entry.created_at);
-                    invalidEntries++;
-                    return; // Skip entries without a timestamp
+            // Update summary in the DOM
+            document.getElementById('avgHeartRate').textContent = averageHR;
+            document.getElementById('minHeartRate').textContent = minHR;
+            document.getElementById('maxHeartRate').textContent = maxHR;
+
+            // Show Weekly Summary and hide Detailed Daily Charts
+            document.getElementById('weeklySummary').style.display = 'block';
+            document.getElementById('dailyCharts').style.display = 'none';
+        }
+
+        /**
+         * Displays the Detailed Daily View.
+         * Plots heart rate and SpO2 readings on separate charts with min and max indicators.
+         * @param {Array} data - Array of sensor data objects.
+         * @param {Date} startTime - Start time of the data range.
+         * @param {Date} endTime - End time of the data range.
+         */
+        function displayDetailedDailyView(data, startTime, endTime) {
+            // Process heart rate data
+            const heartRateData = data
+                .filter(entry => typeof entry.bpm === 'number')
+                .map(entry => ({
+                    x: new Date(entry.created_at),
+                    y: entry.bpm
+                }));
+
+            // Process SpO2 data
+            const spo2Data = data
+                .filter(entry => typeof entry.spo2 === 'number')
+                .map(entry => ({
+                    x: new Date(entry.created_at),
+                    y: entry.spo2
+                }));
+
+            // Check if there is data to plot
+            if (heartRateData.length === 0 && spo2Data.length === 0) {
+                alert('No valid heart rate or SpO₂ data available.');
+                return;
+            }
+
+            // Calculate statistics for Heart Rate
+            const bpmValues = heartRateData.map(entry => entry.y);
+            const avgBPM = calculateAverage(bpmValues);
+            const minBPM = Math.min(...bpmValues);
+            const maxBPM = Math.max(...bpmValues);
+
+            // Calculate statistics for SpO2
+            const spo2Values = spo2Data.map(entry => entry.y);
+            const avgSpO2 = calculateAverage(spo2Values);
+            const minSpO2 = Math.min(...spo2Values);
+            const maxSpO2 = Math.max(...spo2Values);
+
+            // Prepare Heart Rate Chart
+            const hrCtx = document.getElementById('heartRateChart').getContext('2d');
+            if (heartRateChart) {
+                heartRateChart.destroy();
+            }
+
+            heartRateChart = new Chart(hrCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Heart Rate (BPM)',
+                            data: heartRateData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Minimum BPM',
+                            data: heartRateData.map(entry => ({ x: entry.x, y: minBPM })),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: [5, 5],
+                            showLine: true,
+                            order: 2
+                        },
+                        {
+                            label: 'Maximum BPM',
+                            data: heartRateData.map(entry => ({ x: entry.x, y: maxBPM })),
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: [5, 5],
+                            showLine: true,
+                            order: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Heart Rate Over Time'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            display: true
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    scales: {
+                        x: { 
+                            type: 'time',
+                            time: { 
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                },
+                                tooltipFormat: 'PPpp'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            },
+                            min: startTime,
+                            max: endTime
+                        },
+                        y: { 
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Heart Rate (BPM)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
                 }
-
-                const date = new Date(entry.created_at);
-                if (isNaN(date)) {
-                    console.warn('Invalid timestamp:', entry.created_at);
-                    invalidEntries++;
-                    return; // Skip invalid dates
-                }
-
-                let key;
-
-                if (aggregation === 'daily') {
-                    // Group by day
-                    key = date.toISOString().split('T')[0];
-                } else if (aggregation === 'weekly') {
-                    // Group by start of the ISO week (Monday)
-                    const startOfWeek = getStartOfWeek(date);
-                    key = startOfWeek.toISOString();
-                }
-
-                if (!grouped[key]) {
-                    grouped[key] = { spo2: [], bpm: [] };
-                }
-
-                if (typeof entry.spo2 !== 'number' || typeof entry.bpm !== 'number') {
-                    console.warn('Invalid spo2 or bpm values:', entry.spo2, entry.bpm);
-                    invalidEntries++;
-                    return; // Skip entries with invalid spo2 or bpm
-                }
-
-                grouped[key].spo2.push(entry.spo2);
-                grouped[key].bpm.push(entry.bpm);
             });
 
-            if (invalidEntries > 0) {
-                console.warn(`Skipped ${invalidEntries} invalid entries.`);
+            // Prepare SpO2 Chart
+            const spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
+            if (spo2Chart) {
+                spo2Chart.destroy();
             }
 
-            const aggregated = [];
+            spo2Chart = new Chart(spo2Ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'SpO₂ Level (%)',
+                            data: spo2Data,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Minimum SpO₂',
+                            data: spo2Data.map(entry => ({ x: entry.x, y: minSpO2 })),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: [5, 5],
+                            showLine: true,
+                            order: 2
+                        },
+                        {
+                            label: 'Maximum SpO₂',
+                            data: spo2Data.map(entry => ({ x: entry.x, y: maxSpO2 })),
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: [5, 5],
+                            showLine: true,
+                            order: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'SpO₂ Levels Over Time'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        legend: {
+                            display: true
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    scales: {
+                        x: { 
+                            type: 'time',
+                            time: { 
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                },
+                                tooltipFormat: 'PPpp'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            },
+                            min: startTime,
+                            max: endTime
+                        },
+                        y: { 
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'SpO₂ Level (%)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
 
-            for (const key in grouped) {
-                const avgSpo2 = average(grouped[key].spo2);
-                const avgBpm = average(grouped[key].bpm);
-                aggregated.push({
-                    interval: key,
-                    avgSpo2: avgSpo2,
-                    avgBpm: avgBpm
-                });
-            }
-
-            // Sort the aggregated data by interval
-            aggregated.sort((a, b) => new Date(a.interval) - new Date(b.interval));
-
-            return aggregated;
+            // Show Detailed Daily Charts and hide Weekly Summary
+            document.getElementById('dailyCharts').style.display = 'block';
+            document.getElementById('weeklySummary').style.display = 'none';
         }
 
         /**
          * Calculates the average of an array of numbers.
-         * @param {Array} arr - Array of numbers.
-         * @returns {number} - The average value.
+         * @param {number[]} numbers - Array of numerical values.
+         * @returns {number} - The average value rounded to two decimal places.
          */
-        function average(arr) {
-            if (arr.length === 0) return 0;
-            const sum = arr.reduce((acc, val) => acc + val, 0);
-            return parseFloat((sum / arr.length).toFixed(2));
+        function calculateAverage(numbers) {
+            if (numbers.length === 0) return 0;
+            const sum = numbers.reduce((acc, val) => acc + val, 0);
+            return parseFloat((sum / numbers.length).toFixed(2));
         }
 
         /**
-         * Returns the start date of the ISO week for a given date.
-         * @param {Date} date - The date object.
-         * @returns {Date} - The start date of the week (Monday).
+         * Initializes default values when the page loads.
          */
-        function getStartOfWeek(date) {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - ((day + 6) % 7);
-            d.setDate(diff);
-            d.setHours(0, 0, 0, 0);
-            return d;
-        }
-
-        /**
-         * Determines the time unit for the x-axis based on aggregation.
-         * @param {string} aggregation - The aggregation interval.
-         * @returns {string} - The time unit.
-         */
-        function getTimeUnit(aggregation) {
-            if (aggregation === '30') return 'minute';
-            if (aggregation === 'daily') return 'day';
-            if (aggregation === 'weekly') return 'week';
-            return 'minute';
-        }
-
         window.onload = function() {
-            const now = new Date();
-            const endTimeElem = document.getElementById('endTime');
-            const startTimeElem = document.getElementById('startTime');
-            const aggregationElem = document.getElementById('aggregation');
+            const viewType = document.getElementById('viewType');
+            const datePicker = document.getElementById('datePickerContainer');
 
-            // Set default end time to now
-            endTimeElem.value = now.toISOString().slice(0,16);
+            // Set default view to Weekly Summary
+            viewType.value = 'weekly';
+            datePicker.style.display = 'none';
 
-            // Set default start time to 24 hours ago
-            const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            startTimeElem.value = startTime.toISOString().slice(0,16);
+            // Set default time-of-day range
+            document.getElementById('startTime').value = '00:00';
+            document.getElementById('endTime').value = '23:59';
 
-            // Set default aggregation to 'daily'
-            aggregationElem.value = 'daily';
+            // Set default measurement frequency
+            document.getElementById('frequency').value = '30';
         };
     </script>
 </body>
