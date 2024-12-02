@@ -1,12 +1,36 @@
+$(document).ready(function () {
+    const strengthLevels = ['Weak', 'Fair', 'Good', 'Strong'];
+
+    $('#password').on('input', function () {
+        const password = $(this).val(); 
+        const result = zxcvbn(password);
+
+        $('#strength').text(`${strengthLevels[result.score]} password`);
+    });
+});
+
+function validateEmail(email) {
+    const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return regex.test(email);
+}
+
 
 function signup() {
     // data validation
     if ($('#email').val() === "") {
+        window.alert("empty email!");
+        return;
+    }
+    if (!validateEmail($('#email').val())) {
         window.alert("invalid email!");
         return;
     }
     if ($('#password').val() === "") {
         window.alert("invalid password");
+        return;
+    }
+    if (zxcvbn($('#password').val()).score < 3) {
+        window.alert("Password should be strong");
         return;
     }
     if ($('#device_id').val() === "") {

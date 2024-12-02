@@ -97,6 +97,46 @@ router.get("/status", async function (req, res) {
   }
 });
 
+router.post('/update-password', async (req, res) => {
+  const currentPassword = req.body.currentPassword;
+  const newPassword =  req.body.newPassword;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).send('Current and new password are required.');
+  }
+
+  const token = req.header('x-auth');
+  if (!token) {
+    return res.status(401).send('Access denied. No token provided.');
+  }
+
+  try {
+    const decoded = jwt.decode(token, secret); 
+    const user = await User.findOne(
+      { email: decoded.email },
+      "email passwordHash"
+    );
+    if (!user) {
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).send('Current password is incorrect.');
+    }
+
+    const new_passwordHash = bcrypt.hashSync(newPassword, 10);
+
+    // Update the user's password in the database
+    user.passwordHash = new_passwordHash;
+    await user.save();
+
+    res.send('Password updated successfully.');
+  } catch (error) {
+    res.status(500).send('Server error.');
+  }
+});
+
 router.get("/", async function (req, res, next) {
   try {
     var user = await User.find().exec();

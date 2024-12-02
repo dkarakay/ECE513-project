@@ -6,3 +6,13 @@ body {
 a {
   color: #00B7FF;
 }
+
+.strength-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.strength {
+  color: #555;
+}

@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ECE 513 Project</title>
+  <title>Register</title>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-  <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="javascripts/register.js"></script>
+  <link rel="stylesheet" href="stylesheets/style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+  <script src="/javascripts/register.js"></script>
 </head>
 <body>
 
@@ -24,9 +26,10 @@
           <label for="email">Email: </label>
           <input type="text" id="email" placeholder="Enter email" name="email">
         </div>
-        <div>
+        <div class="strength-wrapper">
           <label for="password">Password: </label>
           <input type="password" id="password" placeholder="Enter password" name="password">
+          <span id="strength" class="strength"></span>
         </div>
 	<div>
           <label for="device_id">Device ID: </label>

@@ -12,6 +12,7 @@
       type="text/javascript"
       src="https://code.jquery.com/jquery-3.6.0.min.js"
     ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
     <script src="javascripts/account.js"></script>
     <style>
       #welcomeMessage {
@@ -32,6 +33,24 @@
       <div id="welcomeMessage"></div>
       <div id="deviceId"></div>
     </div>
+
+    <div>
+      <h3>Update Password</h3>
+      <div>
+        <label for="currentPassword">Current Password:</label>
+        <input type="password" id="currentPassword" placeholder="Enter current password" name="currentPassword">
+      </div>
+      <div>
+        <label for="newPassword">New Password:</label>
+        <input type="password" id="newPassword" placeholder="Enter new password" name="newPassword">
+      </div>
+      <div>
+        <label for="confirmPassword">Confirm New Password:</label>
+        <input type="password" id="confirmPassword" placeholder="Confirm new password" name="confirmPassword">
+      </div>
+      <button id="btnUpdatePassword">Update Password</button>
+    </div>
+
     <script>
       (function () {
         if (!window.localStorage.getItem("token")) {

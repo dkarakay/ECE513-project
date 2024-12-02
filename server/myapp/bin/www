@@ -17,10 +17,10 @@ var fs = require("fs");
 var port = normalizePort(process.env.PORT || "3000");
 app.set("port", port);
 
-const options = {
-  key: fs.readFileSync("/home/ec2-user/ssl/private.key"), // Your private key path
-  cert: fs.readFileSync("/home/ec2-user/ssl/certificate.crt"), // Your certificate path
-};
+// const options = {
+//   key: fs.readFileSync("/home/ec2-user/ssl/private.key"), // Your private key path
+//   cert: fs.readFileSync("/home/ec2-user/ssl/certificate.crt"), // Your certificate path
+// };
 
 /**
  * Create HTTP server.
