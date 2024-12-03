@@ -1,12 +1,16 @@
-<!DOCTYPE html>
+<!DOCTYPE html>  
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sensor Data Visualization</title>
+    <title>Sensor Data Graphs</title>
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Date Adapter (date-fns) -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- jQuery Library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Sensor.js Script -->
+    <script src="javascripts/sensor.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,29 +19,6 @@
         label, select, input, button {
             margin: 5px;
         }
-        /* Header Styling */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        /* Home Button Styling */
-        #homeButton {
-            padding: 8px 16px;
-            background-color: #007BFF; /* Bootstrap Primary Blue */
-            color: white;
-            text-decoration: none;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        #homeButton:hover {
-            background-color: #0056b3;
-        }
-        /* Control Panel Styling */
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -50,31 +31,75 @@
             align-items: center;
             gap: 10px;
         }
-        /* Summary and Charts Sections */
-        #weeklySummary, #dailyCharts {
+        #weeklySummary, #dailyCharts, #latestSensorData {
             max-width: 800px;
             margin-top: 20px;
         }
         .summary-item {
             margin: 5px 0;
         }
-        /* Canvas Styling */
         canvas {
-            max-width: 800px;
+            width: 100% !important;
+            height: 400px !important; /* Adjust as needed */
+            margin-top: 20px;
+        }
+        .latest-data {
+            font-size: 1.2em;
+            font-weight: bold;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .latest-data h2 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        /* Loading Indicator Styles */
+        #loadingIndicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            z-index: 1000;
+            text-align: center;
+        }
+        /* Optional: Styling for Weekly Summary Description */
+        #weeklySummary p {
+            font-size: 1em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        /* Bar Chart Styling */
+        canvas#weeklySummaryChart {
+            width: 100% !important;
+            max-width: 600px;
+            height: 400px !important;
             margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <!-- Header Section with Home Button -->
-    <div class="header">
-        <h1>Sensor Data Visualization</h1>
-        <!-- Home Button -->
-        <a href="http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/index.html" id="homeButton">Home</a>
-    </div>
+    <!-- Navigation Links -->
+    <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
+    <a href="login.html" class="left brand-logo valign-wrapper">Login</a>
+    <h1>Sensor Data Graphs</h1>
     
     <!-- Control Panel -->
     <div class="controls">
+        <!-- Device Selection -->
+        <div>
+            <label for="deviceSelect">Select Device:</label>
+            <select id="deviceSelect" class="form-control">
+                <!-- Options will be populated by sensor.js -->
+            </select>
+        </div>
+
         <!-- View Selection -->
         <div>
             <label for="viewType">View:</label>
@@ -99,28 +124,40 @@
             <input type="time" id="endTime" name="endTime" value="23:59">
         </div>
         
-        <!-- Measurement Frequency -->
-        <div>
-            <label for="frequency">Measurement Frequency (minutes):</label>
-            <select id="frequency" name="frequency">
-                <option value="15">15</option>
-                <option value="30" selected>30</option>
-                <option value="60">60</option>
-            </select>
-        </div>
-        
         <!-- Generate View Button -->
         <div>
-            <button id="generateView">Generate View</button>
+            <button id="generateView" class="btn btn-primary">Generate View</button>
+        </div>
+    </div>
+    
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator">
+        <p>Loading data, please wait...</p>
+    </div>
+    
+    <!-- Latest Sensor Data Section -->
+    <div id="latestSensorData" style="display: none;">
+        <h2>Latest Sensor Data</h2>
+        <div id="latestDataContent" class="latest-data">
+            <!-- Latest data will be populated here -->
         </div>
     </div>
     
     <!-- Weekly Summary Section -->
     <div id="weeklySummary" style="display: none;">
         <h2>Weekly Summary (Past 7 Days)</h2>
+        
+        <!-- Added Description -->
+        <p>
+            The weekly summary view shows your average, minimum, and maximum heart rate in the past 7 days.
+        </p>
+        
         <div class="summary-item"><strong>Average Heart Rate:</strong> <span id="avgHeartRate">--</span> BPM</div>
         <div class="summary-item"><strong>Minimum Heart Rate:</strong> <span id="minHeartRate">--</span> BPM</div>
         <div class="summary-item"><strong>Maximum Heart Rate:</strong> <span id="maxHeartRate">--</span> BPM</div>
+        
+        <!-- Bar Chart for Weekly Summary -->
+        <canvas id="weeklySummaryChart"></canvas>
     </div>
     
     <!-- Detailed Daily Charts Section -->
@@ -130,27 +167,104 @@
         <canvas id="spo2Chart"></canvas>
     </div>
     
+    <!-- Additional JavaScript for Chart Rendering and UI Handling -->
     <script>
         let heartRateChart = null;
         let spo2Chart = null;
+        let weeklySummaryChart = null;
 
-        // Toggle visibility of date picker based on view type
-        document.getElementById('viewType').addEventListener('change', function() {
-            const view = this.value;
-            const datePicker = document.getElementById('datePickerContainer');
-            if (view === 'daily') {
-                datePicker.style.display = 'flex';
-            } else {
-                datePicker.style.display = 'none';
+        /**
+         * Initialize the application once devices are loaded.
+         */
+        function initializeApp() {
+            const deviceSelect = $('#deviceSelect');
+            const options = deviceSelect.find('option');
+
+            if (options.length === 0) {
+                // No devices found
+                alert('No devices found for your account.');
+                return;
+            }
+
+            // Remove "All Devices" option if it exists
+            options.filter('[value="all"]').remove();
+
+            // If there's at least one device, select the first one
+            if (options.length > 0) {
+                deviceSelect.val(options.first().val());
+                // Optionally, auto-generate view for the first device
+                // generateView();
+            }
+        }
+
+        /**
+         * Listen for device dropdown population using MutationObserver.
+         */
+        $(document).ready(function () {
+            const deviceSelect = $('#deviceSelect');
+
+            // Use a MutationObserver to detect when sensor.js populates the dropdown
+            const observer = new MutationObserver(function(mutationsList, observer) {
+                for(let mutation of mutationsList) {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        // Devices have been added
+                        initializeApp();
+                        // Disconnect the observer after initialization
+                        observer.disconnect();
+                        break;
+                    }
+                }
+            });
+
+            // Start observing the deviceSelect for child node additions
+            observer.observe(deviceSelect[0], { childList: true });
+
+            // Additionally, handle the case where sensor.js might have already populated the dropdown
+            if (deviceSelect.find('option').length > 0) {
+                initializeApp();
+                observer.disconnect();
             }
         });
 
-        // Event listener for Generate View button
-        document.getElementById('generateView').addEventListener('click', function() {
-            const viewType = document.getElementById('viewType').value;
-            const frequency = parseInt(document.getElementById('frequency').value);
-            const startTimeInput = document.getElementById('startTime').value;
-            const endTimeInput = document.getElementById('endTime').value;
+        /**
+         * Toggle visibility of date picker based on view type.
+         */
+        $('#viewType').on('change', function() {
+            const view = $(this).val();
+            const datePicker = $('#datePickerContainer');
+            if (view === 'daily') {
+                datePicker.show();
+            } else {
+                datePicker.hide();
+            }
+        });
+
+        /**
+         * Event listener for Generate View button.
+         */
+        $('#generateView').on('click', function() {
+            generateView();
+        });
+
+        /**
+         * Generates the selected view by fetching data and rendering charts.
+         */
+        function generateView() {
+            const viewType = $('#viewType').val();
+            const selectedDeviceId = $('#deviceSelect').val();
+            const startTimeInput = $('#startTime').val();
+            const endTimeInput = $('#endTime').val();
+
+            console.log('Selected View Type:', viewType);
+            console.log('Selected Device ID:', selectedDeviceId);
+            console.log('Start Time:', startTimeInput);
+            console.log('End Time:', endTimeInput);
+
+            // Validate device selection
+            if (!selectedDeviceId) {
+                alert('Please select a device.');
+                return;
+            }
 
             // Validate time inputs
             if (!startTimeInput || !endTimeInput) {
@@ -173,7 +287,7 @@
                 endTime = new Date(); // Current time
                 startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
             } else if (viewType === 'daily') {
-                const selectedDate = document.getElementById('selectedDate').value;
+                const selectedDate = $('#selectedDate').val();
                 if (!selectedDate) {
                     alert('Please select a date for Detailed Daily View.');
                     return;
@@ -193,36 +307,73 @@
                 }
             }
 
-            // Construct API URL with parameters
-            const apiUrl = `http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}&frequency=${frequency}`;
+            console.log('Start Time (ISO):', startTime.toISOString());
+            console.log('End Time (ISO):', endTime.toISOString());
+
+            // Construct API URL based on selected device and time range
+            const baseUrl = 'http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor';
+            let apiUrl;
+            if (selectedDeviceId === 'all') {
+                apiUrl = `${baseUrl}/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
+            } else {
+                apiUrl = `${baseUrl}?device_id=${selectedDeviceId}&start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
+            }
+
             console.log('Fetching data from:', apiUrl);
 
-            // Fetch data from API
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Data fetched:', data);
-                    if (!Array.isArray(data) || data.length === 0) {
-                        alert('No data available for the selected time range.');
-                        return;
-                    }
+            // Show loading indicator
+            $('#loadingIndicator').show();
 
-                    if (viewType === 'weekly') {
-                        displayWeeklySummary(data);
-                    } else if (viewType === 'daily') {
-                        displayDetailedDailyView(data, startTime, endTime);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    alert(`Failed to fetch data: ${error.message}`);
-                });
-        });
+            // Fetch data from API with authentication token
+            const token = localStorage.getItem('token'); // assuming token is stored here
+            if (!token) {
+                alert('Authentication token not found. Please log in.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'x-auth': token
+                }
+            })
+            .then(response => {
+                console.log('Response Status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data fetched:', data);
+                if (!Array.isArray(data) || data.length === 0) {
+                    alert('No data available for the selected time range.');
+                    $('#loadingIndicator').hide();
+                    return;
+                }
+
+                if (viewType === 'weekly') {
+                    displayWeeklySummary(data);
+                    // Display latest sensor data only for weekly view
+                    displayLatestSensorData(data[0]); // Assuming the first entry is the latest
+                } else if (viewType === 'daily') {
+                    displayDetailedDailyView(data, startTime, endTime);
+                    // Optionally, you can decide whether to show latest data for daily view
+                    // If so, modify displayLatestSensorData to not hide dailyCharts
+                    // displayLatestSensorData(data[0]);
+                }
+
+                // Hide loading indicator after processing
+                $('#loadingIndicator').hide();
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                alert(`Failed to fetch data: ${error.message}`);
+                // Hide loading indicator on error
+                $('#loadingIndicator').hide();
+            });
+        }
 
         /**
          * Displays the Weekly Summary View.
@@ -237,6 +388,8 @@
 
             if (heartRates.length === 0) {
                 alert('No valid heart rate data available.');
+                // Hide Weekly Summary section
+                $('#weeklySummary').hide();
                 return;
             }
 
@@ -245,14 +398,69 @@
             const minHR = Math.min(...heartRates);
             const maxHR = Math.max(...heartRates);
 
-            // Update summary in the DOM
-            document.getElementById('avgHeartRate').textContent = averageHR;
-            document.getElementById('minHeartRate').textContent = minHR;
-            document.getElementById('maxHeartRate').textContent = maxHR;
+            console.log(`Weekly Heart Rate - Avg: ${averageHR}, Min: ${minHR}, Max: ${maxHR}`);
 
-            // Show Weekly Summary and hide Detailed Daily Charts
-            document.getElementById('weeklySummary').style.display = 'block';
-            document.getElementById('dailyCharts').style.display = 'none';
+            // Update summary in the DOM
+            $('#avgHeartRate').text(averageHR);
+            $('#minHeartRate').text(minHR);
+            $('#maxHeartRate').text(maxHR);
+
+            // Render Bar Chart
+            const ctx = document.getElementById('weeklySummaryChart').getContext('2d');
+            if (weeklySummaryChart) {
+                weeklySummaryChart.destroy();
+            }
+
+            weeklySummaryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Average BPM', 'Minimum BPM', 'Maximum BPM'],
+                    datasets: [{
+                        label: 'Heart Rate (BPM)',
+                        data: [averageHR, minHR, maxHR],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(255, 206, 86, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255,99,132,1)',
+                            'rgba(255, 206, 86, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Weekly Heart Rate Summary'
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'BPM'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Show Weekly Summary and hide Detailed Daily Charts and Latest Data
+            $('#weeklySummary').show();
+            $('#dailyCharts').hide();
+            $('#latestSensorData').hide();
         }
 
         /**
@@ -263,6 +471,7 @@
          * @param {Date} endTime - End time of the data range.
          */
         function displayDetailedDailyView(data, startTime, endTime) {
+            console.log('Displaying Detailed Daily View');
             // Process heart rate data
             const heartRateData = data
                 .filter(entry => typeof entry.bpm === 'number')
@@ -279,9 +488,14 @@
                     y: entry.spo2
                 }));
 
+            console.log('Processed Heart Rate Data:', heartRateData);
+            console.log('Processed SpO2 Data:', spo2Data);
+
             // Check if there is data to plot
             if (heartRateData.length === 0 && spo2Data.length === 0) {
                 alert('No valid heart rate or SpO₂ data available.');
+                // Hide Detailed Daily Charts section
+                $('#dailyCharts').hide();
                 return;
             }
 
@@ -296,6 +510,9 @@
             const avgSpO2 = calculateAverage(spo2Values);
             const minSpO2 = Math.min(...spo2Values);
             const maxSpO2 = Math.max(...spo2Values);
+
+            console.log(`Heart Rate - Avg: ${avgBPM}, Min: ${minBPM}, Max: ${maxBPM}`);
+            console.log(`SpO2 - Avg: ${avgSpO2}, Min: ${minSpO2}, Max: ${maxSpO2}`);
 
             // Prepare Heart Rate Chart
             const hrCtx = document.getElementById('heartRateChart').getContext('2d');
@@ -483,9 +700,13 @@
                 }
             });
 
-            // Show Detailed Daily Charts and hide Weekly Summary
-            document.getElementById('dailyCharts').style.display = 'block';
-            document.getElementById('weeklySummary').style.display = 'none';
+            console.log('Heart Rate Chart:', heartRateChart);
+            console.log('SpO2 Chart:', spo2Chart);
+
+            // Show Detailed Daily Charts and hide Weekly Summary and Latest Data
+            $('#dailyCharts').show();
+            $('#weeklySummary').hide();
+            $('#latestSensorData').hide();
         }
 
         /**
@@ -500,23 +721,38 @@
         }
 
         /**
-         * Initializes default values when the page loads.
+         * Displays the latest sensor data.
+         * @param {Object} data - Latest sensor data object.
          */
-        window.onload = function() {
-            const viewType = document.getElementById('viewType');
-            const datePicker = document.getElementById('datePickerContainer');
+        function displayLatestSensorData(data) {
+            if (
+                data.bpm === undefined ||
+                data.spo2 === undefined ||
+                data.device_id === undefined ||
+                data.created_at === undefined
+            ) {
+                $("#latestDataContent").html(`
+                    <p>No data available</p>
+                `);
+            } else {
+                // Display the sensor data in a styled format
+                $("#latestDataContent").html(`
+                    <p><strong>BPM:</strong> ${data.bpm}</p>
+                    <p><strong>SPO₂:</strong> ${data.spo2}</p>
+                    <p><strong>Device ID:</strong> ${data.device_id}</p>
+                    <p><strong>Timestamp:</strong> ${new Date(data.created_at).toLocaleString()}</p>
+                `);
+            }
 
-            // Set default view to Weekly Summary
-            viewType.value = 'weekly';
-            datePicker.style.display = 'none';
+            // Show Latest Sensor Data
+            $('#latestSensorData').show();
 
-            // Set default time-of-day range
-            document.getElementById('startTime').value = '00:00';
-            document.getElementById('endTime').value = '23:59';
+            // Hide Weekly Summary if visible
+            // $('#weeklySummary').hide();
 
-            // Set default measurement frequency
-            document.getElementById('frequency').value = '30';
-        };
+            // Do NOT hide Daily Charts
+            // $('#dailyCharts').hide(); // Removed to prevent hiding charts
+        }
     </script>
 </body>
 </html>
