@@ -24,6 +24,7 @@
       <div>
         <button id="btnLogOut">Log Out</button>
         <button id="btnSensorData">View Sensor Data</button>
+        <button id="btnGraphData">View Graph Data</button>
       </div>
 
       <div id="welcomeMessage"></div>
@@ -178,6 +179,10 @@
       // Navigate to sensor.html when the button is clicked
       $("#btnSensorData").click(function () {
         window.location.href = "sensor.html";
+      });
+
+      $("#btnGraphData").click(function () {
+        window.location.href = "graph.html";
       });
     </script>
   </body>
