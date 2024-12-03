@@ -19,17 +19,23 @@
   <body>
     <div class="container">
       <a href="index.html" class="left brand-logo valign-wrapper">Home</a>
+      <a href="#" id="btnLogOut" class="left brand-logo valign-wrapper"
+        >Log Out</a
+      >
+
       <br />
       <br />
-      <div>
-        <button id="btnLogOut">Log Out</button>
-        <button id="btnSensorData">View Sensor Data</button>
-        <button id="btnGraphData">View Graph Data</button>
-      </div>
 
       <div id="welcomeMessage"></div>
-      <div id="deviceId"></div>
+      <br />
 
+      <div class="button-group">
+        <button id="btnSensorData" class="btn btn-success">
+          View Sensor Data
+        </button>
+        <button id="btnGraphData" class="btn btn-info">View Graph Data</button>
+      </div>
+      <br />
       <ul class="nav nav-tabs">
         <li class="active"><a href="#updatePasswordTab">Update Password</a></li>
         <li>
@@ -70,7 +76,8 @@
             name="confirmPassword"
           />
         </div>
-        <button id="btnUpdatePassword">Update Password</button>
+        <button id="btnUpdatePassword" class="btn btn-primary">
+          Update Password
       </div>
 
       <div id="updateMeasurementSettingsTab" class="tab-content">
@@ -108,7 +115,7 @@
             name="endTime"
           />
         </div>
-        <button id="btnUpdateMeasurementSettings">
+        <button id="btnUpdateMeasurementSettings" class="btn btn-primary">
           Update Measurement Settings
         </button>
         <div id="measurementUpdateStatus"></div>
@@ -154,7 +161,7 @@
             name="newEndTime"
           />
         </div>
-        <button id="btnAddDevice">Add Device</button>
+        <button id="btnAddDevice" class="btn btn-primary">Add Device</button>
         <div id="deviceAddStatus"></div>
       </div>
 
@@ -164,7 +171,7 @@
           <label for="deleteDeviceSelect">Select Device:</label>
           <select id="deleteDeviceSelect" class="form-control"></select>
         </div>
-        <button id="btnDeleteDevice">Delete Device</button>
+        <button id="btnDeleteDevice" class="btn btn-primary">Delete Device</button>
         <div id="deviceDeleteStatus"></div>
       </div>
     </div>

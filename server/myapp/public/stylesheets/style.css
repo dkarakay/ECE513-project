@@ -1,5 +1,6 @@
 body {
   padding: 5px;
+  margin: 5px;
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
@@ -7,14 +8,48 @@ a {
   color: #3370e2;
 }
 
-.strength-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+h1 {
+  text-align: center;
 }
 
-.strength {
-  color: #555;
+.team {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.member {
+  text-align: center;
+}
+
+img {
+  border-radius: 10px;
+  width: 300px;
+  height: 300px;
+}
+
+.auth-links,
+.user-info {
+  display: none; /* Initially hide both elements */
+}
+.auth-links.show,
+.user-info.show {
+  display: flex; /* Show elements when the 'show' class is added */
+  justify-content: flex-end; /* Align items to the right */
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%; /* Ensure full width */
+}
+.auth-links a,
+.user-info a {
+  margin-left: 15px;
+  color: #3370e2;
+}
+
+#btnLogOut,
+#loginLink,
+#registerLink {
+  margin-left: 15px;
 }
 
 /* Account */
@@ -60,4 +95,53 @@ a {
 
 .tab-content.active {
   display: block;
+}
+
+/* Register */
+
+.form-group-left {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.form-group-left label {
+  width: 100px; /* Adjust the width as needed */
+  margin-right: 10px;
+  text-align: left;
+}
+
+.form-group-left input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.strength-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.strength {
+  color: #555; /* Default color */
+}
+
+.strength.weak {
+  color: red; /* Color for weak password */
+}
+
+.strength.fair {
+  color: orange; /* Color for fair password */
+}
+
+.strength.good {
+  color: blue; /* Color for good password */
+}
+
+.strength.strong {
+  color: green; /* Color for strong password */
+}
+
+.strength.very-strong {
+  color: darkgreen; /* Color for very strong password */
 }
