@@ -2,41 +2,129 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Ensure proper scaling on mobile devices -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Team Information</title>
-    <link rel="stylesheet" href="stylesheets/style.css" />
+    <!-- Bootstrap CSS -->
     <link
       rel="stylesheet"
       href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
     />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="stylesheets/style.css" />
+    <!-- jQuery Library -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS (Optional, for interactive components) -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <!-- Custom JS -->
     <script src="javascripts/index.js"></script>
+
+    <style>
+      /* Custom Styles for Team Members */
+      .team {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 30px;
+      }
+
+      .member {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 15px;
+      }
+
+      .member img {
+        width: 100%;
+        height: auto;
+        max-width: 200px;
+        border-radius: 50%;
+        margin-bottom: 15px;
+      }
+
+      @media (max-width: 768px) {
+        .member {
+          padding: 10px;
+        }
+
+        .member img {
+          max-width: 150px;
+        }
+      }
+
+      .auth-links,
+      .user-info {
+        margin-top: 20px;
+        text-align: left;
+      }
+
+      .auth-links a,
+      .user-info a {
+        margin-left: 15px;
+      }
+
+      @media (max-width: 768px) {
+        .auth-links,
+        .user-info {
+          text-align: center;
+        }
+      }
+
+      /* Optional: Adjust heading alignment on smaller screens */
+      @media (max-width: 768px) {
+        h1 {
+          text-align: center;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="container">
-      <div class="auth-links" id="authLinks">
-        <a href="register.html" class="left brand-logo valign-wrapper">Register</a>
-        <a href="login.html" class="left brand-logo valign-wrapper">Login</a>
-      </div>
-      <div class="user-info" id="userInfo" style="display: none;">
-        <a href="account.html" id="userEmail" class="left brand-logo valign-wrapper"></a>
-        <a href="#" id="btnLogOut" class="left brand-logo valign-wrapper">Log Out</a>
+      <!-- Navigation Links -->
+      <div class="row">
+        <div class="col-xs-12 col-sm-6 auth-links" id="authLinks">
+          <a href="register.html" class="nav-link">Register</a>
+          <a href="login.html" class="nav-link">Login</a>
+          <a href="account.html" id="userEmail" class="nav-link"></a>
+          <a href="#" id="btnLogOut" class="nav-link">Log Out</a>
       </div>
 
-    <h1>Project Team</h1>
-    <div class="team">
-      <div class="member">
-        <img src="images/deniz.jpeg" alt="Deniz Karakay" />
-        <p><strong>Deniz Karakay</strong></p>
+      <!-- Page Heading -->
+      <div class="row">
+        <div class="col-xs-12">
+          <h1>Project Team</h1>
+        </div>
       </div>
-      <div class="member">
-        <img src="images/serhat.jpeg" alt="Serhat Furkan Bozkurt" />
-        <p><strong>Serhat Furkan Bozkurt</strong></p>
-      </div>
-      <div class="member">
-        <img src="images/umut.jpg" alt="Hasan Umut Suluhan" />
-        <p><strong>Hasan Umut Suluhan</strong></p>
+
+      <!-- Team Members -->
+      <div class="team">
+        <div class="member col-xs-12 col-sm-6 col-md-4">
+          <img src="images/deniz.jpeg" alt="Deniz Karakay" class="img-responsive center-block" />
+          <p><strong>Deniz Karakay</strong></p>
+        </div>
+        <div class="member col-xs-12 col-sm-6 col-md-4">
+          <img src="images/serhat.jpeg" alt="Serhat Furkan Bozkurt" class="img-responsive center-block" />
+          <p><strong>Serhat Furkan Bozkurt</strong></p>
+        </div>
+        <div class="member col-xs-12 col-sm-6 col-md-4">
+          <img src="images/umut.jpg" alt="Hasan Umut Suluhan" class="img-responsive center-block" />
+          <p><strong>Hasan Umut Suluhan</strong></p>
+        </div>
       </div>
     </div>
+
+    <script>
+      $(document).ready(function () {
+        var isLoggedIn = false;
+        if (isLoggedIn) {
+          $('#authLinks').hide();
+          $('#userInfo').show();
+          $('#userEmail').text('user@example.com');
+        } else {
+          $('#authLinks').show();
+          $('#userInfo').hide();
+        }
+      });
+    </script>
   </body>
 </html>
