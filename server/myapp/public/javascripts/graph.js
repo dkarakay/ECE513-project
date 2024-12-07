@@ -160,7 +160,7 @@ function generateView() {
 
   // Construct API URL based on selected device and time range
   const baseUrl =
-    "http://ec2-3-143-111-57.us-east-2.compute.amazonaws.com:3000/sensor";
+    "https://heart.karakay.me/sensor";
   let apiUrl;
   if (selectedDeviceId === "all") {
     apiUrl = `${baseUrl}/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;

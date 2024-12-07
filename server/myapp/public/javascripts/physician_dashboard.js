@@ -6,7 +6,7 @@ $(document).ready(function () {
     const token = localStorage.getItem("physicianToken");
     if (!token) {
       alert("Authentication token missing. Please log in.");
-      window.location.href = "physician_login.html"; // Ensure this page exists
+      window.location.href = "physician-login.html"; // Ensure this page exists
       return;
     }
 
@@ -23,7 +23,7 @@ $(document).ready(function () {
         console.error("Error fetching patients:", jqXHR.responseJSON);
         if (jqXHR.status == 401) {
           alert("Unauthorized access. Please log in.");
-          window.location.href = "physician_login.html";
+          window.location.href = "physician-login.html";
         } else {
           alert("Failed to fetch patients data.");
         }

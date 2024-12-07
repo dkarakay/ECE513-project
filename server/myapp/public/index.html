@@ -85,9 +85,12 @@
         <div class="col-xs-12 col-sm-6 auth-links" id="authLinks">
           <a href="register.html" class="nav-link">Register</a>
           <a href="login.html" class="nav-link">Login</a>
+        </div>
+
+        <div class="col-xs-12 col-sm-6 auth-links" id="userInfo" style="display: none;">
           <a href="account.html" id="userEmail" class="nav-link"></a>
           <a href="#" id="btnLogOut" class="nav-link">Log Out</a>
-      </div>
+        </div>
 
       <!-- Page Heading -->
       <div class="row">
@@ -113,18 +116,6 @@
       </div>
     </div>
 
-    <script>
-      $(document).ready(function () {
-        var isLoggedIn = false;
-        if (isLoggedIn) {
-          $('#authLinks').hide();
-          $('#userInfo').show();
-          $('#userEmail').text('user@example.com');
-        } else {
-          $('#authLinks').show();
-          $('#userInfo').hide();
-        }
-      });
-    </script>
+
   </body>
 </html>

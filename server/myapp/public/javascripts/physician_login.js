@@ -46,7 +46,7 @@ $(document).ready(function () {
           // Store token in localStorage
           localStorage.setItem("physicianToken", data.token);
           // Redirect to dashboard
-          window.location.href = "physician_dashboard.html";
+          window.location.href = "physician-dashboard.html";
         } else {
           alert("Login failed. Please check your credentials.");
         }
