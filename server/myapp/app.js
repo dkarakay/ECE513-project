@@ -1,5 +1,3 @@
-// app.js
-
 var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
@@ -8,9 +6,7 @@ var logger = require("morgan");
 const db = require("./db");
 
 const bodyParser = require("body-parser");
-const cors = require("cors"); // Recommended to use the cors package for better management
 
-// Import Routes
 var graphRouter = require("./routes/graph");
 var usersRouter = require("./routes/users");
 var sensorRouter = require("./routes/sensor");
@@ -18,36 +14,44 @@ var physiciansRouter = require("./routes/physicians"); // New Physician Routes
 
 var app = express();
 
-// View engine setup
+// view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
-// Middleware Configuration
+// This is to enable cross-origin access
+app.use(function (req, res, next) {
+  // Website you wish to allow to connect
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  // Request methods you wish to allow
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS, PUT, PATCH, DELETE"
+  );
+  // Request headers you wish to allow
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "X-Requested-With,content-type"
+  );
+  // Set to true if you need the website to include cookies in the requests sent
+  // to the API (e.g. in case you use sessions)
+  res.setHeader("Access-Control-Allow-Credentials", true);
+  // Pass to next layer of middleware
+  next();
+});
 
-// Use CORS package for handling Cross-Origin requests
-app.use(cors({
-  origin: "*", // Update this to restrict origins in production
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true
-}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Body Parsers
-app.use(express.json()); // Built-in body parser for JSON
-app.use(express.urlencoded({ extended: false })); // Built-in body parser for URL-encoded data
-
-// Logger and Cookie Parser
 app.use(logger("dev"));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-
-// Static Files
 app.use(express.static(path.join(__dirname, "public")));
 
-// Route Handlers
 app.use("/graph", graphRouter);
 app.use("/users", usersRouter);
 app.use("/sensor", sensorRouter);
-app.use("/physicians", physiciansRouter); // Mount Physician Routes
+app.use("/physicians", physiciansRouter);
 
 // Serve index.html for the root route
 app.get("/", (req, res) => {
@@ -66,27 +70,20 @@ app.get("/reset", async (req, res) => {
   }
 });
 
-// Catch 404 and forward to error handler
+// catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// Error Handler
+// error handler
 app.use(function (err, req, res, next) {
-  // Set locals, only providing error in development
+  // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
 
-  // Respond with JSON for API routes or render error page for others
-  if (req.originalUrl.startsWith("/api") || req.originalUrl.startsWith("/physicians")) {
-    res.status(err.status || 500).json({
-      message: err.message,
-      error: res.locals.error
-    });
-  } else {
-    res.status(err.status || 500);
-    res.render("error");
-  }
+  // render the error page
+  res.status(err.status || 500);
+  res.render("error");
 });
 
 module.exports = app;

@@ -96,12 +96,12 @@ router.post("/", checkApiKey, async function (req, res, next) {
     console.log(sensor);
 
     var savedSensor = await sensor.save();
+
     res.status(201).json(savedSensor);
   } catch (err) {
     next(err);
   }
 });
-
 // GET sensor data showing the latest entry for the logged-in user's devices
 router.get("/latest", getUserDeviceIds, async function (req, res, next) {
   try {
@@ -155,6 +155,42 @@ router.get("/device/:device_id", async function (req, res, next) {
   try {
     var sensor = await Sensor.find({ device_id: req.params.device_id }).exec();
     res.json(sensor);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET user's last 7 days average, max, min BPM
+router.get("/stats/7days", getUserDeviceIds, async function (req, res, next) {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 7
+    );
+
+    const query = {
+      device_id: { $in: req.device_ids },
+      createdAt: { $gte: sevenDaysAgo },
+    };
+
+    const sensors = await Sensor.find(query).exec();
+
+    if (!sensors || sensors.length === 0) {
+      return res.json({ message: "No data found" });
+    }
+
+    const bpms = sensors.map((sensor) => sensor.bpm);
+    const averageBpm = bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
+    const maxBpm = Math.max(...bpms);
+    const minBpm = Math.min(...bpms);
+
+    res.json({
+      averageBpm,
+      maxBpm,
+      minBpm,
+    });
   } catch (err) {
     next(err);
   }

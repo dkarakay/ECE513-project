@@ -1,0 +1,40 @@
+<!-- views/physician_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physician Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../stylesheets/physician_style.css">
+    <!-- jQuery Library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="../javascripts/physician_dashboard.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <a href="../physician_dashboard.html" class="left brand-logo valign-wrapper">Dashboard</a>
+        <a href="../physician_logout.html" id="logoutLink" class="left brand-logo valign-wrapper">Logout</a>
+        <h1>All Patients</h1>
+        <table class="table table-striped" id="patientsTable">
+            <thead>
+                <tr>
+                    <th>Patient Name</th>
+                    <th>7-Day Average HR (BPM)</th>
+                    <th>7-Day Minimum HR (BPM)</th>
+                    <th>7-Day Maximum HR (BPM)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Patient rows will be populated by physician_dashboard.js -->
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

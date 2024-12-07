@@ -1,0 +1,22 @@
+/* stylesheets/physician_style.css */
+
+/* Strength Indicator Colors */
+.weak {
+    color: red;
+}
+
+.fair {
+    color: orange;
+}
+
+.good {
+    color: gold;
+}
+
+.strong {
+    color: green;
+}
+
+.very-strong {
+    color: darkgreen;
+}

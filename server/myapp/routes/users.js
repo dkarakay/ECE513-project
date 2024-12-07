@@ -1,6 +1,7 @@
 var express = require("express");
 var router = express.Router();
 var User = require("../models/user");
+var Sensor = require("../models/sensor");
 
 const jwt = require("jwt-simple");
 const bcrypt = require("bcryptjs");
@@ -325,8 +326,8 @@ router.delete("/delete-device/:device_id", async (req, res) => {
 
 router.get("/", async function (req, res, next) {
   try {
-    var user = await User.find().exec();
-    res.json(user);
+    var users = await User.find().exec();
+    res.json(users);
   } catch (err) {
     next(err);
   }

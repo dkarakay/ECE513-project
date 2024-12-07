@@ -1,0 +1,39 @@
+<!-- views/physician_register.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physician Registration</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../stylesheets/physician_style.css">
+    <!-- jQuery Library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- zxcvbn.js for Password Strength -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="../javascripts/physician_register.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="left brand-logo valign-wrapper">Home</a>
+        <a href="../physician_login.html" id="loginLink" class="left brand-logo valign-wrapper">Login</a>
+        <h1>Physician Registration</h1>
+        <form id="physicianRegisterForm">
+            <div class="form-group">
+                <label for="physicianEmail">Email:</label>
+                <input type="email" id="physicianEmail" name="email" placeholder="Enter email" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="physicianPassword">Password:</label>
+                <input type="password" id="physicianPassword" name="password" placeholder="Enter password" class="form-control" required>
+                <span id="physicianStrength" class="strength"></span>
+            </div>
+            <button type="submit" id="btnPhysicianRegister" class="btn btn-primary">Register</button>
+        </form>
+        <div id="physicianRxData" style="margin-top:20px;"></div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!-- views/patient_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Detailed Daily View</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../stylesheets/physician_style.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jQuery Library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Date-fns Adapter for Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="../javascripts/patient_detail.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <a href="physician_dashboard.html" class="left brand-logo valign-wrapper">Dashboard</a>
+        <a href="../physician_logout.html" id="logoutLink" class="left brand-logo valign-wrapper">Logout</a>
+        <h1>Patient Detailed Daily View</h1>
+        <div id="detailData">
+            <p><strong>Patient Name:</strong> <span id="patientName">Loading...</span></p>
+            <p><strong>Date:</strong> <span id="selectedDate">--</span></p>
+        </div>
+        <canvas id="heartRateChart"></canvas>
+        <canvas id="spo2Chart"></canvas>
+    </div>
+</body>
+</html>
