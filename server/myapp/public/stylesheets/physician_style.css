@@ -1,22 +1,37 @@
 /* stylesheets/physician_style.css */
+body {
+  padding: 5px;
+  margin: 5px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+a {
+  color: #3370e2;
+}
+
+#btnLogOut,
+#loginLink,
+#logoutLink,
+#registerLink {
+  margin-left: 15px;
+}
 
 /* Strength Indicator Colors */
 .weak {
-    color: red;
+  color: red;
 }
 
 .fair {
-    color: orange;
+  color: orange;
 }
 
 .good {
-    color: gold;
+  color: gold;
 }
 
 .strong {
-    color: green;
+  color: green;
 }
 
 .very-strong {
-    color: darkgreen;
+  color: darkgreen;
 }

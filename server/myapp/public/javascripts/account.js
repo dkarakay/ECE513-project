@@ -12,6 +12,9 @@ $(function () {
       populateDeviceDropdown(data.devices);
       populateDeleteDeviceDropdown(data.devices);
       fetchMeasurementSettings();
+      fetchPhysicians(data.physician);
+      displayCurrentPhysician(data.physician); // Display the current physician
+      console.log(data);
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
       window.location.replace("display.html");
@@ -220,11 +223,98 @@ function deleteDevice() {
     });
 }
 
+function fetchPhysicians(currentPhysicianId) {
+  $.ajax({
+    url: "/physicians",
+    method: "GET",
+    headers: { "x-auth": window.localStorage.getItem("token") },
+    dataType: "json",
+  })
+    .done(function (data) {
+      populatePhysicianDropdown(data.physicians, currentPhysicianId);
+    })
+    .fail(function (jqXHR) {
+      console.error("Failed to fetch physicians: " + jqXHR.responseText);
+    });
+}
+function populatePhysicianDropdown(physicians, currentPhysicianId) {
+  const physicianSelect = $("#physicianSelect");
+  physicianSelect.empty();
+  physicians.forEach((physician) => {
+    const option = $("<option></option>")
+      .attr("value", physician._id)
+      .text(physician.email);
+    if (physician._id === currentPhysicianId) {
+      option.css("background-color", "#d4edda"); // Greenish color
+    }
+    physicianSelect.append(option);
+  });
+}
+
+function assignPhysician() {
+  const physicianId = $("#physicianSelect").val();
+
+  if (!physicianId) {
+    window.alert("Please select a physician.");
+    return;
+  }
+
+  $.ajax({
+    url: "/users/add-physician",
+    method: "POST",
+    headers: { "x-auth": window.localStorage.getItem("token") },
+    contentType: "application/json",
+    data: JSON.stringify({
+      physicianId,
+    }),
+    dataType: "json",
+  })
+    .done(function (data) {
+      console.log("Physician assigned successfully:", data);
+      $("#physicianAssignStatus").html("Physician assigned successfully.");
+      location.reload();
+    })
+    .fail(function (jqXHR) {
+      console.log("Failed to assign physician:", jqXHR.responseText);
+      $("#physicianAssignStatus").html(
+        "Failed to assign physician: " + jqXHR.responseText
+      );
+    });
+}
+
+function displayCurrentPhysician(currentPhysicianId) {
+  if (!currentPhysicianId) {
+    $("#currentPhysicianStatus").html("Assigned Physician: None");
+    return;
+  }
+
+  $.ajax({
+    url: `/physicians/${currentPhysicianId}`,
+    method: "GET",
+    headers: { "x-auth": window.localStorage.getItem("token") },
+    dataType: "json",
+  })
+    .done(function (data) {
+      if (data.success && data.physician) {
+        $("#currentPhysicianStatus").html(
+          `Assigned Physician: ${data.physician.email}`
+        );
+      } else {
+        $("#currentPhysicianStatus").html("Assigned Physician: None");
+      }
+    })
+    .fail(function (jqXHR) {
+      console.error("Failed to fetch current physician: " + jqXHR.responseText);
+      $("#currentPhysicianStatus").html("Assigned Physician: None");
+    });
+}
+
 $(function () {
   $("#btnUpdatePassword").click(updatePassword);
   $("#btnUpdateMeasurementSettings").click(updateMeasurementSettings);
   $("#btnAddDevice").click(addDevice);
   $("#btnDeleteDevice").click(deleteDevice);
+  $("#btnAssignPhysician").click(assignPhysician);
 });
 
 function logout() {

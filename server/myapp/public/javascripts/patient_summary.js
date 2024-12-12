@@ -1,4 +1,11 @@
-// javascripts/patient_summary.js
+$(function () {
+  $("#btnLogOut").click(logout);
+});
+
+function logout() {
+  localStorage.removeItem("physicianToken");
+  window.location.replace("physician-login.html");
+}
 
 $(document).ready(function () {
   // Extract patient_id from URL parameters
@@ -21,16 +28,18 @@ $(document).ready(function () {
   // Fetch patient summary data
   function fetchPatientSummary() {
     $.ajax({
-      url: `/physicians/patients/${patientId}/summary`,
+      url: `/physicians/patient-summary/${patientId}`,
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "x-auth": token,
       },
       dataType: "json",
     })
       .done(function (data, textStatus, jqXHR) {
         populateSummary(data);
-        renderChart(data.chartData);
+        renderChart(data);
+        populateDeviceDropdown(data.devices);
+        fetchMeasurementSettings(patientId);
       })
       .fail(function (jqXHR, textStatus, errorThrown) {
         if (jqXHR.status == 401) {
@@ -48,11 +57,10 @@ $(document).ready(function () {
     $("#avgHeartRate").text(data.avg_hr);
     $("#minHeartRate").text(data.min_hr);
     $("#maxHeartRate").text(data.max_hr);
-    $("#measurementFrequency").val(data.measurement_frequency);
   }
 
   // Render the summary chart
-  function renderChart(chartData) {
+  function renderChart(data) {
     const ctx = document.getElementById("weeklySummaryChart").getContext("2d");
     new Chart(ctx, {
       type: "bar",
@@ -61,7 +69,7 @@ $(document).ready(function () {
         datasets: [
           {
             label: "Heart Rate (BPM)",
-            data: [chartData.avg_hr, chartData.min_hr, chartData.max_hr],
+            data: [data.avg_hr, data.min_hr, data.max_hr],
             backgroundColor: [
               "rgba(255, 99, 132, 0.6)",
               "rgba(54, 162, 235, 0.6)",
@@ -100,35 +108,69 @@ $(document).ready(function () {
     });
   }
 
-  // Update measurement frequency
-  $("#updateFrequency").click(function () {
-    const frequency = $("#measurementFrequency").val();
-    if (frequency < 1) {
-      alert("Frequency must be at least 1 minute.");
+  function populateDeviceDropdown(devices) {
+    const deviceSelect = $("#deviceSelect");
+    deviceSelect.empty();
+    devices.forEach((device) => {
+      deviceSelect.append(
+        $("<option></option>").attr("value", device).text(device)
+      );
+    });
+  }
+
+  function fetchMeasurementSettings(userId) {
+    const selectedDeviceId = $("#deviceSelect").val();
+    $.ajax({
+      url: `/users/measurement-settings/${selectedDeviceId}?userId=${userId}`,
+      method: "GET",
+      dataType: "json",
+    })
+      .done(function (data) {
+        console.log("Measurement interval:", data.measurementInterval);
+        $("#measurementInterval").val(data.measurementInterval);
+      })
+      .fail(function (jqXHR) {
+        console.error(
+          "Failed to fetch measurement settings: " + jqXHR.responseText
+        );
+      });
+  }
+
+  function updateMeasurementSettings(userId) {
+    const selectedDeviceId = $("#deviceSelect").val();
+    const measurementInterval = $("#measurementInterval").val();
+
+    if (!measurementInterval) {
+      window.alert("Measurement interval is required.");
       return;
     }
 
     $.ajax({
-      url: `/physicians/patients/${patientId}/frequency`,
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      url: `/users/update-measurement-settings`,
+      method: "POST",
       contentType: "application/json",
-      data: JSON.stringify({ frequency: frequency }),
+      data: JSON.stringify({
+        userId: userId,
+        device_id: selectedDeviceId,
+        measurementInterval,
+      }),
       dataType: "json",
     })
-      .done(function (data, textStatus, jqXHR) {
+      .done(function (data) {
+        console.log("AJAX request succeeded:", data);
         $("#updateFeedback").html(
           `<div class="alert alert-success">Measurement frequency updated successfully.</div>`
         );
       })
-      .fail(function (jqXHR, textStatus, errorThrown) {
+      .fail(function (jqXHR) {
+        console.log("AJAX request failed:", jqXHR.responseText);
         $("#updateFeedback").html(
-          `<div class="alert alert-danger">Failed to update frequency.</div>`
+          `<div class="alert alert-danger">Failed to update frequency: ${jqXHR.responseText}</div>`
         );
       });
-  });
+  }
+
+  $("#updateFrequency").click(updateMeasurementSettings.bind(null, patientId));
 
   // Initialize
   fetchPatientSummary();

@@ -1,4 +1,6 @@
-// javascripts/physician_dashboard.js
+$(function () {
+  $("#btnLogOut").click(logout);
+});
 
 $(document).ready(function () {
   // Fetch all patients for the physician
@@ -33,7 +35,6 @@ $(document).ready(function () {
   // Populate the patients table
   function populatePatientsTable(data) {
     const patients = data.patients;
-    console.log("Data:", data);
     console.log("Patients data:", patients);
     const tbody = $("#patientsTable tbody");
     tbody.empty(); // Clear existing data
@@ -45,8 +46,8 @@ $(document).ready(function () {
                 <td>${patient.stats.minBpm}</td>
                 <td>${patient.stats.maxBpm}</td>
                 <td>
-                    <button class="btn btn-info view-summary" data-patient-id="${patient.id}">View Summary</button>
-                    <button class="btn btn-secondary view-detail" data-patient-id="${patient.id}">View Detail</button>
+                    <button class="btn btn-info view-summary" data-patient-id="${patient._id}">View Summary</button>
+                    <button class="btn btn-secondary view-detail" data-patient-id="${patient._id}">View Detail</button>
                 </td>
             </tr>`;
       tbody.append(row);
@@ -56,14 +57,19 @@ $(document).ready(function () {
   // Event delegation for dynamically added buttons
   $("#patientsTable").on("click", ".view-summary", function () {
     const patientId = $(this).data("patient-id");
-    window.location.href = `patient_summary.html?patient_id=${patientId}`;
+    window.location.href = `patient-summary.html?patient_id=${patientId}`;
   });
 
   $("#patientsTable").on("click", ".view-detail", function () {
     const patientId = $(this).data("patient-id");
-    window.location.href = `patient_detail.html?patient_id=${patientId}`;
+    window.location.href = `patient-detail.html?patient_id=${patientId}`;
   });
 
   // Initialize
   fetchPatients();
 });
+
+function logout() {
+  localStorage.removeItem("physicianToken");
+  window.location.replace("physician-login.html");
+}

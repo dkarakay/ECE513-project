@@ -19,7 +19,6 @@ async function getPhysicianId(req, res, next) {
       .json({ success: false, msg: "Missing X-Auth header" });
   }
   const token = req.headers["x-auth"];
-  console.log("Token:", token);
   try {
     const decoded = jwt.decode(token, secret);
     const physician = await Physician.findOne({ email: decoded.email });
@@ -125,7 +124,6 @@ router.post("/login", async (req, res) => {
 // Fetch All Patients for Physician
 router.get("/patients", getPhysicianId, async (req, res) => {
   const physicianId = req.query.physicianId || req.physicianId;
-
   if (!physicianId) {
     return res
       .status(400)
@@ -145,9 +143,9 @@ router.get("/patients", getPhysicianId, async (req, res) => {
     }
     const patientsWithStats = await Promise.all(
       physician.patients.map(async (patientId) => {
-        const patient = await User.findById(patientId);
+        const user = await User.findById(patientId);
 
-        if (!patient) {
+        if (!user) {
           return null;
         }
 
@@ -158,25 +156,36 @@ router.get("/patients", getPhysicianId, async (req, res) => {
           now.getDate() - 7
         );
 
-        const sensors = await Sensor.find({
-          device_id: { $in: patient.devices.map((device) => device.device_id) },
-          created_at: { $gte: sevenDaysAgo },
-        }).exec();
+        const query = {
+          device_id: { $in: user.devices.map((device) => device.device_id) },
+          createdAt: { $gte: sevenDaysAgo },
+        };
+        const devices = user.devices.map((device) => device.device_id);
+        const sensors = await Sensor.find(query).exec();
 
         const bpms = sensors.map((sensor) => sensor.bpm);
-        const averageBpm = bpms.length
-          ? bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length
-          : null;
-        const maxBpm = bpms.length ? Math.max(...bpms) : null;
-        const minBpm = bpms.length ? Math.min(...bpms) : null;
+        const averageBpm =
+          bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
+        const maxBpm = Math.max(...bpms);
+        const minBpm = Math.min(...bpms);
+
+        console.log("Patient summary:", {
+          name: user.email,
+          avg_hr: averageBpm,
+          min_hr: minBpm,
+          max_hr: maxBpm,
+          devices: devices,
+          measurement_frequency: user.measurementFrequency || 30,
+        });
 
         return {
-          ...patient.toObject(),
+          ...user.toObject(),
           stats: {
             averageBpm,
             maxBpm,
             minBpm,
           },
+          devices,
         };
       })
     );
@@ -197,6 +206,22 @@ router.get("/", async (req, res) => {
     res.json({ success: true, physicians });
   } catch (error) {
     console.error("Error fetching physicians:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+});
+
+// Return a specific physician by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const physician = await Physician.findById(req.params.id, { password: 0 });
+    if (!physician) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Physician not found." });
+    }
+    res.json({ success: true, physician });
+  } catch (error) {
+    console.error("Error fetching physician:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 });
@@ -224,6 +249,62 @@ router.post("/patients/add", async (req, res) => {
   }
 });
 
+// Get last 7 days of the selected user's sensor data
+router.get("/patient-summary/:userId", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 7
+    );
+
+    const query = {
+      device_id: { $in: user.devices.map((device) => device.device_id) },
+      createdAt: { $gte: sevenDaysAgo },
+    };
+
+    const sensors = await Sensor.find(query).exec();
+
+    if (!sensors || sensors.length === 0) {
+      return res.json({ message: "No data found" });
+    }
+    const devices = user.devices.map((device) => device.device_id);
+    const bpms = sensors.map((sensor) => sensor.bpm);
+    const averageBpm = bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
+    const maxBpm = Math.max(...bpms);
+    const minBpm = Math.min(...bpms);
+
+    console.log("Patient summary:", {
+      name: user.email,
+      avg_hr: averageBpm,
+      min_hr: minBpm,
+      max_hr: maxBpm,
+      devices: devices,
+      measurement_frequency: user.measurementFrequency || 30,
+    });
+    res.json({
+      name: user.email, // Assuming email as name, change if needed
+      avg_hr: averageBpm,
+      min_hr: minBpm,
+      max_hr: maxBpm,
+      devices: devices,
+      measurement_frequency: user.measurementFrequency || 30, // Assuming a default value
+    });
+  } catch (error) {
+    console.error("Error fetching patient summary:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+});
 // Additional physician-specific routes (e.g., patient summary, detailed view) would go here
 
 module.exports = router;

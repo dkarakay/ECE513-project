@@ -13,6 +13,10 @@ const userSchema = new db.Schema({
   devices: [deviceSchema],
   lastAccess: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
+  physician: {
+    type: db.Schema.Types.ObjectId,
+    ref: "Physician",
+  },
 });
 
 const User = db.model("User", userSchema);

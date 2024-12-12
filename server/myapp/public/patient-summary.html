@@ -1,39 +1,73 @@
 <!-- views/patient_summary.html -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patient Summary</title>
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+    />
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../stylesheets/physician_style.css">
+    <link rel="stylesheet" href="../stylesheets/physician_style.css" />
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- jQuery Library -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Custom JavaScript -->
     <script src="../javascripts/patient_summary.js" defer></script>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <a href="physician_dashboard.html" class="left brand-logo valign-wrapper">Dashboard</a>
-        <a href="../physician_logout.html" id="logoutLink" class="left brand-logo valign-wrapper">Logout</a>
-        <h1>Patient Summary</h1>
-        <div id="summaryData">
-            <p><strong>Patient Name:</strong> <span id="patientName">Loading...</span></p>
-            <p><strong>7-Day Average Heart Rate:</strong> <span id="avgHeartRate">--</span> BPM</p>
-            <p><strong>7-Day Minimum Heart Rate:</strong> <span id="minHeartRate">--</span> BPM</p>
-            <p><strong>7-Day Maximum Heart Rate:</strong> <span id="maxHeartRate">--</span> BPM</p>
-        </div>
-        <div class="form-group">
-            <label for="measurementFrequency">Measurement Frequency (minutes):</label>
-            <input type="number" id="measurementFrequency" name="frequency" min="1" class="form-control" placeholder="Enter frequency">
-        </div>
-        <button id="updateFrequency" class="btn btn-primary">Update Frequency</button>
-        <div id="updateFeedback" style="margin-top:20px;"></div>
-        <canvas id="weeklySummaryChart"></canvas>
+      <a
+        href="../physician-dashboard.html"
+        class="left brand-logo valign-wrapper"
+        >Dashboard</a
+      >
+      <a href="#" id="btnLogOut" class="left brand-logo valign-wrapper"
+        >Log Out</a
+      >
+      <h1>Patient Summary</h1>
+      <div id="summaryData">
+        <p>
+          <strong>Patient Name:</strong>
+          <span id="patientName">Loading...</span>
+        </p>
+        <p>
+          <strong>7-Day Average Heart Rate:</strong>
+          <span id="avgHeartRate">--</span> BPM
+        </p>
+        <p>
+          <strong>7-Day Minimum Heart Rate:</strong>
+          <span id="minHeartRate">--</span> BPM
+        </p>
+        <p>
+          <strong>7-Day Maximum Heart Rate:</strong>
+          <span id="maxHeartRate">--</span> BPM
+        </p>
+      </div>
+      <div class="form-group">
+        <label for="deviceSelect">Select Device:</label>
+        <select id="deviceSelect" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label for="measurementInterval">Measurement Interval (minutes):</label>
+        <input
+          type="number"
+          id="measurementInterval"
+          name="frequency"
+          min="1"
+          class="form-control"
+          placeholder="Enter interval"
+        />
+      </div>
+      <button id="updateFrequency" class="btn btn-primary">
+        Update Frequency
+      </button>
+      <div id="updateFeedback" style="margin-top: 20px"></div>
+      <canvas id="weeklySummaryChart"></canvas>
     </div>
-</body>
+  </body>
 </html>
