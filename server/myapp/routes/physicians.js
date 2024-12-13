@@ -276,7 +276,7 @@ router.get("/patient-summary/:userId", async (req, res) => {
     const sensors = await Sensor.find(query).exec();
 
     if (!sensors || sensors.length === 0) {
-      return res.json({ message: "No data found" });
+      return res.status(404).json({ message: "No data found" });
     }
     const devices = user.devices.map((device) => device.device_id);
     const bpms = sensors.map((sensor) => sensor.bpm);

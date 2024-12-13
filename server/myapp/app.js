@@ -7,7 +7,6 @@ const db = require("./db");
 
 const bodyParser = require("body-parser");
 
-var graphRouter = require("./routes/graph");
 var usersRouter = require("./routes/users");
 var sensorRouter = require("./routes/sensor");
 var physiciansRouter = require("./routes/physicians"); // New Physician Routes
@@ -48,7 +47,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.use("/graph", graphRouter);
 app.use("/users", usersRouter);
 app.use("/sensor", sensorRouter);
 app.use("/physicians", physiciansRouter);

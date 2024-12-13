@@ -49,7 +49,7 @@ router.post("/register", async function (req, res) {
     const user = await User.findOne({ email: req.body.email });
     if (user) {
       return res
-        .status(401)
+        .status(409)
         .json({ success: false, msg: "This email already used" });
     }
 
@@ -81,7 +81,7 @@ router.post("/register", async function (req, res) {
 
 router.post("/login", async function (req, res) {
   if (!req.body.email || !req.body.password) {
-    return res.status(401).json({ error: "Missing email and/or password" });
+    return res.status(400).json({ error: "Missing email and/or password" });
   }
 
   try {
@@ -102,7 +102,7 @@ router.post("/login", async function (req, res) {
 
       // Send back a token that contains the user's email
       res
-        .status(201)
+        .status(200)
         .json({ success: true, token: token, msg: "Login success" });
     } else {
       res
@@ -111,9 +111,10 @@ router.post("/login", async function (req, res) {
     }
   } catch (err) {
     console.log("Error:", err);
-    res.status(400).send(err);
+    res.status(500).send(err);
   }
 });
+
 router.get("/status", getUserId, async function (req, res) {
   try {
     const user = await User.findById(req.userId, "email devices");
@@ -123,7 +124,7 @@ router.get("/status", getUserId, async function (req, res) {
     // Send back email and device ID
     res.status(200).json({ email: user.email, devices: user.devices });
   } catch (ex) {
-    res.status(401).json({ success: false, message: "Invalid JWT" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -152,7 +153,7 @@ router.post("/update-password", getUserId, async (req, res) => {
     user.passwordHash = new_passwordHash;
     await user.save();
 
-    res.send("Password updated successfully.");
+    res.status(200).send("Password updated successfully.");
   } catch (error) {
     res.status(500).send("Server error.");
   }
@@ -263,7 +264,7 @@ router.post("/add-device", getUserId, async (req, res) => {
     const existingDevice = user.devices.find((d) => d.device_id === device_id);
     if (existingDevice) {
       return res
-        .status(400)
+        .status(409)
         .json({ success: false, msg: "Device already exists" });
     }
 
@@ -276,7 +277,7 @@ router.post("/add-device", getUserId, async (req, res) => {
     });
     await user.save();
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
       message: "Device added successfully!",
       device_id,
@@ -317,9 +318,9 @@ router.delete("/delete-device/:device_id", getUserId, async (req, res) => {
 router.get("/", async function (req, res, next) {
   try {
     var users = await User.find().exec();
-    res.json(users);
+    res.status(200).json(users);
   } catch (err) {
-    next(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -342,14 +343,14 @@ router.get("/device/:device_id", async function (req, res, next) {
     }
 
     // Return the device details
-    res.json({
+    res.status(200).json({
       device_id: device.device_id,
       measurementInterval: device.measurementInterval,
       startTime: device.startTime,
       endTime: device.endTime,
     });
   } catch (err) {
-    next(err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 

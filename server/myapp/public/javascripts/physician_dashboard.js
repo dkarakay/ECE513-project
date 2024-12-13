@@ -35,7 +35,6 @@ $(document).ready(function () {
   // Populate the patients table
   function populatePatientsTable(data) {
     const patients = data.patients;
-    console.log("Patients data:", patients);
     const tbody = $("#patientsTable tbody");
     tbody.empty(); // Clear existing data
 

@@ -50,6 +50,7 @@ sh kill_server.sh
 | GET        | `/users/measurement-settings/:device_id` | Get the measurement settings for a device.                      |
 | GET        | `/users/me`                              | Get the current user's details.                                 |
 | POST       | `/users/add-device`                      | Add a new device for the user.                                  |
+| POST       | `/users/add-physician`                   | Add a physician to the user.                                    |
 | DELETE     | `/users/delete-device/:device_id`        | Delete a device for the user.                                   |
 | GET        | `/users`                                 | Get all users.                                                  |
 | GET        | `/users/device/:device_id`               | Get device details by device ID.                                |

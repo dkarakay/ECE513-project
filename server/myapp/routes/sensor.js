@@ -13,11 +13,6 @@ function checkApiKey(req, res, next) {
   var apiKey = req.headers["x-api-key"];
   // String trimming
   apiKey = apiKey.trim();
-  console.log("API Key:", apiKey);
-  console.log("Expected API Key:", API_KEY);
-
-  console.log("Type of API Key:", typeof apiKey);
-  console.log("Type of Expected API Key:", typeof API_KEY);
 
   if (!apiKey) {
     return res.status(401).json({ success: false, msg: "Missing API key" });
@@ -34,6 +29,7 @@ async function getUserDeviceIds(req, res, next) {
     // If type is GET, check query string
     if (req.method === "GET") {
       if (req.query.userId) {
+        // Get the user ID from the query string
         const userId = req.query.userId;
         const user = await User.findById(userId);
         if (!user) {
@@ -66,11 +62,13 @@ async function getUserDeviceIds(req, res, next) {
   }
   const token = req.headers["x-auth"];
   try {
+    // Decode the JWT
     const decoded = jwt.decode(token, secret);
     const user = await User.findOne({ email: decoded.email });
     if (!user) {
       return res.status(404).json({ success: false, msg: "User not found" });
     }
+    // Get the device IDs of the user
     req.device_ids = user.devices.map((device) => device.device_id);
     next();
   } catch (ex) {
@@ -139,7 +137,7 @@ router.get("/latest", getUserDeviceIds, async function (req, res, next) {
     var sensor = await Sensor.findOne(query).sort({ _id: -1 }).exec();
     // If it is null, say that the user has no data
     if (!sensor) {
-      return res.json({ message: "No data found" });
+      return res.status(404).json({ message: "No data found" });
     }
     res.json(sensor);
   } catch (err) {
@@ -158,7 +156,7 @@ router.get("/", getUserDeviceIds, async function (req, res, next) {
     var sensor = await Sensor.find(query).exec();
     // If it is null, say that the user has no data
     if (!sensor) {
-      return res.json({ message: "No data found" });
+      return res.status(404).json({ message: "No data found" });
     }
     res.json(sensor);
   } catch (err) {
@@ -180,6 +178,9 @@ router.get("/all", async function (req, res, next) {
 router.get("/device/:device_id", async function (req, res, next) {
   try {
     var sensor = await Sensor.find({ device_id: req.params.device_id }).exec();
+    if (!sensor) {
+      return res.status(404).json({ message: "No data found" });
+    }
     res.json(sensor);
   } catch (err) {
     next(err);
