@@ -46,6 +46,8 @@ http_request_t request;
 http_response_t response;
 JsonParserStatic<1024, 20> parser1;
 
+bool useParticlePublish = false;  // Settings variable to determine the method
+
 int timeToMinutes(const char *time) {
   int hours = (time[0] - '0') * 10 + (time[1] - '0');
   int minutes = (time[3] - '0') * 10 + (time[4] - '0');
@@ -79,13 +81,14 @@ void getConfigFromServer() {
             60000;
         startTime = parser1.getReference().key("startTime").valueString();
         endTime = parser1.getReference().key("endTime").valueString();
-        Serial.println("Configuration received from server");
+        /*Serial.println("--------------------");
         Serial.print("Measurement Interval: ");
         Serial.println(measurementInterval);
         Serial.print("Start Time: ");
         Serial.println(startTime);
         Serial.print("End Time: ");
         Serial.println(endTime);
+        Serial.println("--------------------");*/
 
       } else {
         Serial.println("Failed to parse JSON response.");
@@ -104,20 +107,12 @@ void configUpdateHandler(const char *event, const char *data) {
   getConfigFromServer();
 }
 
-String processor(const String &var) {
-  if (var == "SPO2") {
-    return n_spo2 > 0 ? String(n_spo2) : String("00.00");
-  } else if (var == "HEARTRATE") {
-    return n_heart_rate > 0 ? String(n_heart_rate) : String("00");
-  }
-  return String();
-}
-
 void printCurrentTime() {
   Serial.print("Current time: ");
   Serial.println(Time.format(Time.now(), "%Y-%m-%d %H:%M:%S"));
 }
 
+// Save data to EEPROM
 void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   int address = eepromDataCount * sizeof(float) * 2;
   EEPROM.put(address, averageBPM);
@@ -126,33 +121,74 @@ void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   Serial.println("DATA SAVED to EEPROM");
 }
 
+// Send data to the server
 void sendDataParticle(float averageBPM, float averageSPO2) {
-  if (Particle.connected()) {
-    Particle.publish("bpm", String(averageBPM), PRIVATE);
-    Particle.publish("spo2", String(averageSPO2), PRIVATE);
-    Particle.publish("bpm_spo2",
-                     "{\"bpm\": " + String(averageBPM) +
-                         ", \"spo2\": " + String(averageSPO2) + "}",
-                     PRIVATE);
+  if (useParticlePublish) {
+    if (Particle.connected()) {
+      Particle.publish("bpm", String(averageBPM), PRIVATE);
+      Particle.publish("spo2", String(averageSPO2), PRIVATE);
+      Particle.publish("bpm_spo2",
+                       "{\"bpm\": " + String(averageBPM) +
+                           ", \"spo2\": " + String(averageSPO2) + "}",
+                       PRIVATE);
 
-    Serial.println("DATA SENT to Particle Cloud");
-    dataSent = true;
-    dataSentCount++;
+      Serial.println("DATA SENT to Particle Cloud");
+      dataSent = true;
+      dataSentCount++;
 
-    if (dataSentCount >= 2) {
+      if (dataSentCount >= 2) {
+        currentState = WAIT;
+        stateStartMillis = millis();
+        dataSentCount = 0;
+        dataSent = false;
+      } else {
+        currentState = EMPTY;
+      }
+
+    } else {
+      currentState = SAVE_TO_EEPROM;
+    }
+  } else {
+    if (dataSentCount == 0) {
+      // Send direct POST request
+      request.hostname = "ec2-3-143-111-57.us-east-2.compute.amazonaws.com";
+      request.port = 3000;
+      request.path = "/sensor";
+      request.body = "{\"device_id\":\"" + System.deviceID() +
+                     "\",\"data\":{\"bpm\":" + String(averageBPM) +
+                     ",\"spo2\":" + String(averageSPO2) + "}}";
+
+      http_header_t headers[] = {
+          {"Content-Type", "application/json"},
+          {"x-api-key", "3786bc99-d8f4-428c-80a3-33fd7afaf5de"},
+          {NULL, NULL}  // Terminate the headers array with NULL
+      };
+
+      http.post(request, response, headers);
+
+      if (response.status == 201) {
+        Serial.println("DATA SENT to server");
+        dataSent = true;
+        dataSentCount++;
+
+        currentState = EMPTY;
+
+      } else {
+        Serial.print("Failed to send data. Status code: ");
+        Serial.println(response.status);
+        currentState = SAVE_TO_EEPROM;
+      }
+    } else if (dataSentCount >= 2) {
       currentState = WAIT;
       stateStartMillis = millis();
       dataSentCount = 0;
       dataSent = false;
     } else {
-      currentState = EMPTY;
+      dataSentCount += 1;
     }
-
-  } else {
-    currentState = SAVE_TO_EEPROM;
   }
 }
-
+// Submit stored data to the server from EEPROM
 void submitStoredData() {
   for (int i = 0; i < eepromDataCount; i++) {
     int address = i * sizeof(float) * 2;
@@ -160,18 +196,43 @@ void submitStoredData() {
     EEPROM.get(address, storedBPM);
     EEPROM.get(address + sizeof(float), storedSPO2);
 
-    Particle.publish("bpm", String(storedBPM), PRIVATE);
-    Particle.publish("spo2", String(storedSPO2), PRIVATE);
-    Particle.publish("bpm_spo2",
-                     "{\"bpm\": " + String(storedBPM) +
-                         ", \"spo2\": " + String(storedSPO2) + "}",
-                     PRIVATE);
+    if (useParticlePublish) {
+      Particle.publish("bpm", String(storedBPM), PRIVATE);
+      Particle.publish("spo2", String(storedSPO2), PRIVATE);
+      Particle.publish("bpm_spo2",
+                       "{\"bpm\": " + String(storedBPM) +
+                           ", \"spo2\": " + String(storedSPO2) + "}",
+                       PRIVATE);
 
-    Serial.println("STORED DATA SENT to Particle Cloud");
+      Serial.println("STORED DATA SENT to Particle Cloud");
+    } else {
+      // Send direct POST request
+      request.hostname = "ec2-3-143-111-57.us-east-2.compute.amazonaws.com";
+      request.port = 3000;
+      request.path = "/sensor";
+      request.body = "{\"device_id\":\"" + System.deviceID() +
+                     "\",\"data\":{\"bpm\":" + String(storedBPM) +
+                     ",\"spo2\":" + String(storedSPO2) + "}}";
+      http_header_t headers[] = {
+          {"Content-Type", "application/json"},
+          {"x-api-key", "3786bc99-d8f4-428c-80a3-33fd7afaf5de"},
+          {NULL, NULL}  // Terminate the headers array with NULL
+      };
+
+      http.post(request, response, headers);
+
+      if (response.status == 201) {
+        Serial.println("STORED DATA SENT to server");
+      } else {
+        Serial.print("Failed to send stored data. Status code: ");
+        Serial.println(response.status);
+      }
+    }
   }
   eepromDataCount = 0;  // Reset the count after submitting all data
 }
 
+// Check and reset EEPROM data after 24 hours
 void checkAndResetEEPROM() {
   unsigned long currentMillis = millis();
   if (firstSaveTimestamp != 0 &&
@@ -217,8 +278,6 @@ void setup() {
   sensor.getINT2();
   numSamples = 0;
   stateStartMillis = millis();
-
-  // Particle.subscribe("configUpdate", configUpdateHandler);
 }
 
 void loop() {
@@ -248,12 +307,12 @@ void loop() {
       printCurrentTime();
 
       Serial.print("SP02 ");
-      if (ch_spo2_valid)
+      if (ch_spo2_valid && dataSentCount != 1)
         Serial.print(n_spo2);
       else
         Serial.print("x");
       Serial.print(", Pulse ");
-      if (ch_hr_valid)
+      if (ch_hr_valid && dataSentCount != 1)
         Serial.print(n_heart_rate);
       else
         Serial.print("x");
@@ -278,6 +337,7 @@ void loop() {
     if (currentTimeInMinutes >= startTimeInMinutes &&
         currentTimeInMinutes <= endTimeInMinutes) {
       switch (currentState) {
+        // Request measurement state
         case REQUEST_MEASUREMENT:
           if (currentMillis - stateStartMillis >= requestTimeout) {
             currentState = WAIT;
@@ -290,6 +350,7 @@ void loop() {
             }
           }
           break;
+        // Send state
         case SEND:
           sendDataParticle(n_heart_rate, n_spo2);
           if (ledState) {
@@ -298,6 +359,7 @@ void loop() {
             RGB.color(0, 0, 0);  // off
           }
           break;
+        // Wait state
         case WAIT:
           if (currentMillis - stateStartMillis >= measurementInterval) {
             currentState = REQUEST_MEASUREMENT;
@@ -310,6 +372,7 @@ void loop() {
             }
           }
           break;
+        // Save data to EEPROM state
         case SAVE_TO_EEPROM:
           saveDataToEEPROM(n_heart_rate, n_spo2);
           if (ledState) {
@@ -320,6 +383,7 @@ void loop() {
           currentState = WAIT;
           stateStartMillis = millis();
           break;
+        // Empty state
         case EMPTY:
           if (ledState) {
             RGB.color(0, 255, 0);  // green
@@ -329,7 +393,8 @@ void loop() {
           break;
       }
     } else {
-      RGB.color(128, 64, 0);  // brown
+      // Turn off the LED outside of the configured time
+      RGB.color(255, 0, 255);
     }
   }
   // Check for Wi-Fi connection and submit stored data if connected
