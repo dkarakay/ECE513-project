@@ -3,35 +3,33 @@ let heartRateChart = null;
 let spo2Chart = null;
 let weeklySummaryChart = null;
 
-/**
- * Initialize the application once devices are loaded.
- */
-function initializeApp() {
-  const deviceSelect = $("#deviceSelect");
-  const options = deviceSelect.find("option");
+const token = window.localStorage.getItem("token");
 
-  if (options.length === 0) {
-    // No devices found
-    alert("No devices found for your account.");
+$(document).ready(function () {
+  // Ensure the token is stored in localStorage
+  if (!token) {
+    alert("You are not logged in!");
+    window.location.replace("login.html");
     return;
   }
 
-  // Remove "All Devices" option if it exists
-  options.filter('[value="all"]').remove();
-
-  // If there's at least one device, select the first one
-  if (options.length > 0) {
-    deviceSelect.val(options.first().val());
-    // Optionally, auto-generate view for the first device
-    // generateView();
-  }
-}
-
-/**
- * Listen for device dropdown population using MutationObserver.
- */
-$(document).ready(function () {
   const deviceSelect = $("#deviceSelect");
+
+  // Fetch the user's devices and populate the dropdown
+  $.ajax({
+    url: "/users/me",
+    method: "GET",
+    headers: { "x-auth": token },
+    dataType: "json",
+  })
+    .done(function (data, textStatus, jqXHR) {
+      populateDeviceDropdown(data.devices);
+      fetchLatestSensorData();
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      console.error("Error fetching user devices:", errorThrown);
+      alert("Failed to fetch user devices. Please try again.");
+    });
 
   // Use a MutationObserver to detect when sensor.js populates the dropdown
   const observer = new MutationObserver(function (mutationsList, observer) {
@@ -54,9 +52,7 @@ $(document).ready(function () {
     initializeApp();
     observer.disconnect();
   }
-});
 
-$(document).ready(function () {
   const today = new Date()
     .toLocaleDateString("en-CA", {
       timeZone: "America/Phoenix", // Tucson follows the same time zone as Phoenix
@@ -68,6 +64,102 @@ $(document).ready(function () {
     .join("-");
   $("#selectedDate").val(today);
 });
+
+function populateDeviceDropdown(devices) {
+  const deviceSelect = $("#deviceSelect");
+  deviceSelect.empty();
+  if (devices.length > 1) {
+    deviceSelect.append(
+      $("<option></option>").attr("value", "all").text("All Devices")
+    );
+  }
+  devices.forEach((device) => {
+    deviceSelect.append(
+      $("<option></option>")
+        .attr("value", device.device_id)
+        .text(device.device_id)
+    );
+  });
+  deviceSelect.change(function () {
+    fetchLatestSensorData();
+  });
+}
+
+function fetchLatestSensorData() {
+  const selectedDeviceId = $("#deviceSelect").val();
+  const url =
+    selectedDeviceId === "all"
+      ? "/sensor/latest"
+      : `/sensor/latest?device_id=${selectedDeviceId}`;
+  $.ajax({
+    url: url,
+    method: "GET",
+    headers: { "x-auth": token },
+    dataType: "json",
+  })
+    .done(function (data, textStatus, jqXHR) {
+      console.log("Latest sensor data:", data);
+      if (
+        data.bpm === undefined ||
+        data.spo2 === undefined ||
+        data.device_id === undefined ||
+        data.createdAt === undefined
+      ) {
+        $("#latestSensorData").html(`
+          <div class="latest-data">
+            <h2>Latest Sensor Data</h2>
+            <p>No data available</p>
+          </div>
+        `);
+      } else {
+        // Display the sensor data in a fancy way
+        $("#latestSensorData").html(`
+          <div class="latest-data">
+            <h2>Latest Sensor Data</h2>
+            <p><strong>BPM:</strong> ${data.bpm}</p>
+            <p><strong>SPO2:</strong> ${data.spo2}</p>
+            <p><strong>Device ID:</strong> ${data.device_id}</p>
+            <p><strong>Timestamp:</strong> ${new Date(
+              data.createdAt
+            ).toLocaleString()}</p>
+          </div>
+        `);
+      }
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      console.error("Error fetching latest sensor data:", errorThrown);
+      alert("Failed to fetch latest sensor data. Please try again.");
+    });
+}
+
+/**
+ * Initialize the application once devices are loaded.
+ */
+function initializeApp() {
+  const deviceSelect = $("#deviceSelect");
+  const options = deviceSelect.find("option");
+
+  if (options.length === 0) {
+    // No devices found
+    alert("No devices found for your account.");
+    return;
+  }
+
+  // Add "All Devices" option if it doesn't exist
+  if (options.filter('[value="all"]').length === 0) {
+    deviceSelect.prepend(
+      $("<option></option>").attr("value", "all").text("All Devices")
+    );
+  }
+
+  // If there's at least one device, select the first one
+  if (options.length > 0) {
+    deviceSelect.val(options.first().val());
+    // Optionally, auto-generate view for the first device
+    // generateView();
+  }
+}
+
 /**
  * Toggle visibility of date picker based on view type.
  */
@@ -158,44 +250,18 @@ function generateView() {
   console.log("Start Time (ISO):", startTime.toISOString());
   console.log("End Time (ISO):", endTime.toISOString());
 
-  // Construct API URL based on selected device and time range
-  const baseUrl =
-    "https://heart.karakay.me/sensor";
-  let apiUrl;
-  if (selectedDeviceId === "all") {
-    apiUrl = `${baseUrl}/all?start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
-  } else {
-    apiUrl = `${baseUrl}?device_id=${selectedDeviceId}&start=${startTime.toISOString()}&end=${endTime.toISOString()}`;
-  }
-
-  console.log("Fetching data from:", apiUrl);
-
-  // Show loading indicator
-  $("#loadingIndicator").show();
-
-  // Fetch data from API with authentication token
-  const token = localStorage.getItem("token"); // assuming token is stored here
-  if (!token) {
-    alert("Authentication token not found. Please log in.");
-    window.location.href = "login.html";
-    return;
-  }
-
-  fetch(apiUrl, {
+  const url =
+    selectedDeviceId === "all"
+      ? "/sensor"
+      : `/sensor?device_id=${selectedDeviceId}`;
+  $.ajax({
+    url: url,
     method: "GET",
-    headers: {
-      "x-auth": token,
-    },
+    headers: { "x-auth": token },
+    dataType: "json",
   })
-    .then((response) => {
-      console.log("Response Status:", response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then((data) => {
-      console.log("Data fetched:", data);
+    .done(function (data, textStatus, jqXHR) {
+      console.log("All sensor data:", data);
       if (!Array.isArray(data) || data.length === 0) {
         alert("No data available for the selected time range.");
         $("#loadingIndicator").hide();
@@ -204,24 +270,24 @@ function generateView() {
 
       if (viewType === "weekly") {
         displayWeeklySummary(data);
+        console.log("Weekly Summary Data:", data);
         // Display latest sensor data only for weekly view
-        displayLatestSensorData(data[0]); // Assuming the first entry is the latest
+        var latestData = data[data.length - 1];
+        displayLatestSensorData(latestData);
       } else if (viewType === "daily") {
         displayDetailedDailyView(data, startTime, endTime);
-        // Optionally, you can decide whether to show latest data for daily view
-        // If so, modify displayLatestSensorData to not hide dailyCharts
-        // displayLatestSensorData(data[0]);
       }
 
       // Hide loading indicator after processing
       $("#loadingIndicator").hide();
     })
-    .catch((error) => {
-      console.error("Error fetching data:", error);
-      alert(`Failed to fetch data: ${error.message}`);
-      // Hide loading indicator on error
-      $("#loadingIndicator").hide();
+    .fail(function (jqXHR, textStatus, errorThrown) {
+      console.error("Error fetching all sensor data:", errorThrown);
+      alert("Failed to fetch all sensor data. Please try again.");
     });
+
+  // Show loading indicator
+  $("#loadingIndicator").show();
 }
 
 /**
@@ -329,7 +395,7 @@ function displayDetailedDailyView(data, startTime, endTime) {
   const heartRateData = data
     .filter((entry) => typeof entry.bpm === "number")
     .map((entry) => ({
-      x: new Date(entry.created_at),
+      x: new Date(entry.createdAt),
       y: entry.bpm,
     }));
 
@@ -337,7 +403,7 @@ function displayDetailedDailyView(data, startTime, endTime) {
   const spo2Data = data
     .filter((entry) => typeof entry.spo2 === "number")
     .map((entry) => ({
-      x: new Date(entry.created_at),
+      x: new Date(entry.createdAt),
       y: entry.spo2,
     }));
 
@@ -584,33 +650,15 @@ function calculateAverage(numbers) {
  * @param {Object} data - Latest sensor data object.
  */
 function displayLatestSensorData(data) {
-  if (
-    data.bpm === undefined ||
-    data.spo2 === undefined ||
-    data.device_id === undefined ||
-    data.created_at === undefined
-  ) {
-    $("#latestDataContent").html(`
-                    <p>No data available</p>
-                `);
-  } else {
-    // Display the sensor data in a styled format
-    $("#latestDataContent").html(`
-                    <p><strong>BPM:</strong> ${data.bpm}</p>
-                    <p><strong>SPO₂:</strong> ${data.spo2}</p>
-                    <p><strong>Device ID:</strong> ${data.device_id}</p>
-                    <p><strong>Timestamp:</strong> ${new Date(
-                      data.created_at
-                    ).toLocaleString()}</p>
-                `);
-  }
-
   // Show Latest Sensor Data
   $("#latestSensorData").show();
+}
 
-  // Hide Weekly Summary if visible
-  // $('#weeklySummary').hide();
+$(function () {
+  $("#btnLogOut").click(logout);
+});
 
-  // Do NOT hide Daily Charts
-  // $('#dailyCharts').hide(); // Removed to prevent hiding charts
+function logout() {
+  localStorage.removeItem("token");
+  window.location.replace("index.html");
 }

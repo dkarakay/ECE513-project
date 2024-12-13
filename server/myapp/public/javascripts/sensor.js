@@ -63,7 +63,7 @@ $(document).ready(function () {
           data.bpm === undefined ||
           data.spo2 === undefined ||
           data.device_id === undefined ||
-          data.created_at === undefined
+          data.createdAt === undefined
         ) {
           $("#latestSensorData").html(`
             <div class="latest-data">
@@ -80,7 +80,7 @@ $(document).ready(function () {
               <p><strong>SPO2:</strong> ${data.spo2}</p>
               <p><strong>Device ID:</strong> ${data.device_id}</p>
               <p><strong>Timestamp:</strong> ${new Date(
-                data.created_at
+                data.createdAt
               ).toLocaleString()}</p>
             </div>
           `);

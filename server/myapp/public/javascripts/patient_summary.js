@@ -116,6 +116,11 @@ $(document).ready(function () {
         $("<option></option>").attr("value", device).text(device)
       );
     });
+
+    // Add event listener for device selection change
+    deviceSelect.change(function () {
+      fetchMeasurementSettings(patientId);
+    });
   }
 
   function fetchMeasurementSettings(userId) {

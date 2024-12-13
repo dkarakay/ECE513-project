@@ -30,15 +30,41 @@ function checkApiKey(req, res, next) {
 
 // Middleware to get the logged-in user's device IDs
 async function getUserDeviceIds(req, res, next) {
-  console.log(req.headers);
   if (!req.headers["x-auth"]) {
-    console.log("Missing X-Auth header");
+    // If type is GET, check query string
+    if (req.method === "GET") {
+      if (req.query.userId) {
+        const userId = req.query.userId;
+        const user = await User.findById(userId);
+        if (!user) {
+          return res
+            .status(404)
+            .json({ success: false, msg: "User not found" });
+        }
+        req.device_ids = user.devices.map((device) => device.device_id);
+        return next();
+      }
+    }
+    if (req.method === "POST") {
+      if (req.body.userId) {
+        const userId = req.body.userId;
+        const user = await User.findById(userId);
+        if (!user) {
+          return res
+            .status(404)
+            .json({ success: false, msg: "User not found" });
+        }
+
+        req.device_ids = user.devices.map((device) => device.device_id);
+        return next();
+      }
+    }
+
     return res
       .status(401)
       .json({ success: false, msg: "Missing X-Auth header" });
   }
   const token = req.headers["x-auth"];
-  console.log("Token:", token);
   try {
     const decoded = jwt.decode(token, secret);
     const user = await User.findOne({ email: decoded.email });
@@ -144,7 +170,7 @@ router.get("/", getUserDeviceIds, async function (req, res, next) {
 router.get("/all", async function (req, res, next) {
   try {
     var sensor = await Sensor.find().exec();
-    res.json(sensor);
+    res.status(200).json(sensor);
   } catch (err) {
     next(err);
   }
@@ -160,6 +186,7 @@ router.get("/device/:device_id", async function (req, res, next) {
   }
 });
 
+/*
 // GET user's last 7 days average, max, min BPM
 router.get("/stats/7days", getUserDeviceIds, async function (req, res, next) {
   try {
@@ -195,5 +222,5 @@ router.get("/stats/7days", getUserDeviceIds, async function (req, res, next) {
     next(err);
   }
 });
-
+*/
 module.exports = router;

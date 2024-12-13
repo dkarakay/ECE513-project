@@ -11,11 +11,6 @@ const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 
 async function getUserId(req, res, next) {
   if (!req.headers["x-auth"]) {
-    console.log("Body: ");
-    console.log(req.body);
-    console.log("Query: ");
-    console.log(req.query);
-
     // If type is GET, check query string
     if (req.method === "GET") {
       if (req.query.userId) {
@@ -30,10 +25,6 @@ async function getUserId(req, res, next) {
       }
     }
 
-    if (req.body.userId) {
-      req.userId = req.body.userId;
-      return next();
-    }
     return res
       .status(401)
       .json({ success: false, msg: "Missing X-Auth header" });

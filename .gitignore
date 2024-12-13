@@ -1,3 +1,4 @@
 server/myapp/node_modules/
 server/keys
 server/serverLog
+server/myapp/package-lock.json

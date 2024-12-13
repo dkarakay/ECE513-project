@@ -1,34 +1,163 @@
 <!-- views/patient_detail.html -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patient Detailed Daily View</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+    />
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../stylesheets/physician_style.css">
+    <link rel="stylesheet" href="../stylesheets/physician_style.css" />
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- jQuery Library -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Date-fns Adapter for Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <!-- Custom JavaScript -->
-    <script src="../javascripts/patient_detail.js" defer></script>
-</head>
-<body>
+    <script src="javascripts/patient_detail.js" defer></script>
+
+    <style>
+      label,
+      select,
+      input,
+      button {
+        margin: 5px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .controls > div {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #weeklySummary,
+      #dailyCharts,
+      #latestSensorData {
+        max-width: 800px;
+        margin-top: 20px;
+      }
+      .summary-item {
+        margin: 5px 0;
+      }
+      canvas {
+        width: 100% !important;
+        height: 400px !important; /* Adjust as needed */
+        margin-top: 20px;
+      }
+      .latest-data {
+        font-size: 1.2em;
+        font-weight: bold;
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      .latest-data h2 {
+        font-size: 1.5em;
+        margin-bottom: 5px;
+      }
+      /* Loading Indicator Styles */
+      #loadingIndicator {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        z-index: 1000;
+        text-align: center;
+      }
+      /* Optional: Styling for Weekly Summary Description */
+      #weeklySummary p {
+        font-size: 1em;
+        color: #555;
+        margin-bottom: 15px;
+      }
+      /* Bar Chart Styling */
+      canvas#weeklySummaryChart {
+        width: 100% !important;
+        max-width: 600px;
+        height: 400px !important;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
     <div class="container">
-        <a href="physician_dashboard.html" class="left brand-logo valign-wrapper">Dashboard</a>
-        <a href="../physician_logout.html" id="logoutLink" class="left brand-logo valign-wrapper">Logout</a>
-        <h1>Patient Detailed Daily View</h1>
-        <div id="detailData">
-            <p><strong>Patient Name:</strong> <span id="patientName">Loading...</span></p>
-            <p><strong>Date:</strong> <span id="selectedDate">--</span></p>
+      <a href="physician-dashboard.html" class="left brand-logo valign-wrapper"
+        >Dashboard</a
+      >
+
+      <h1>Patient Detailed Daily View</h1>
+      <!-- Patient Email Section -->
+      <div id="patientEmailSection">
+        <p>
+          <strong>Patient Email:</strong>
+          <span id="patientEmail">Loading...</span>
+        </p>
+      </div>
+      <div class="controls">
+        <!-- Device Selection -->
+        <div>
+          <label for="deviceSelect">Select Device:</label>
+          <select id="deviceSelect" class="form-control">
+            <!-- Options will be populated by sensor.js -->
+          </select>
         </div>
+
+        <!-- Date Selection (Visible only for Detailed Daily View) -->
+        <div id="datePickerContainer" style="display: none">
+          <label for="selectedDate">Select Date:</label>
+          <input type="date" id="selectedDate" name="selectedDate" />
+        </div>
+
+        <!-- Time-of-Day Range -->
+        <div>
+          <label for="startTime">Start Time:</label>
+          <input type="time" id="startTime" name="startTime" value="00:00" />
+
+          <label for="endTime">End Time:</label>
+          <input type="time" id="endTime" name="endTime" value="23:59" />
+        </div>
+
+        <!-- Generate View Button -->
+        <div>
+          <button id="generateView" class="btn btn-primary">
+            Generate View
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loadingIndicator">
+        <p>Loading data, please wait...</p>
+      </div>
+
+      <!-- Latest Sensor Data Section -->
+      <div id="latestSensorData" style="display: none">
+        <h2>Latest Sensor Data</h2>
+        <div id="latestDataContent" class="latest-data">
+          <!-- Latest data will be populated here -->
+        </div>
+      </div>
+
+      <!-- Detailed Daily Charts Section -->
+      <div id="dailyCharts" style="display: none">
+        <h2>Detailed Daily View</h2>
         <canvas id="heartRateChart"></canvas>
         <canvas id="spo2Chart"></canvas>
+      </div>
     </div>
-</body>
+  </body>
 </html>
