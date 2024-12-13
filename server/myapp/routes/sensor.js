@@ -187,4 +187,19 @@ router.get("/device/:device_id", async function (req, res, next) {
   }
 });
 
+
+// Delete sensor data by sensor ID
+router.delete("/:id", async function (req, res, next) {
+  try {
+    var sensor = await Sensor.findByIdAndDelete(req.params.id).exec();
+    if (!sensor) {
+      return res.status(404).json({ message: "No data found" });
+    }
+    res.json(sensor);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+

@@ -232,9 +232,17 @@ function generateView() {
       month - 1,
       day,
       startTimeParts[0],
-      startTimeParts[1]
+      startTimeParts[1],
+      0
     );
-    endTime = new Date(year, month - 1, day, endTimeParts[0], endTimeParts[1]);
+    endTime = new Date(
+      year,
+      month - 1,
+      day,
+      endTimeParts[0],
+      endTimeParts[1],
+      59
+    );
 
     if (isNaN(startTime) || isNaN(endTime)) {
       alert("Invalid date or time.");
@@ -458,12 +466,12 @@ function displayDetailedDailyView(data, startTime, endTime) {
             y: minBPM,
           })),
           borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 2,
+          borderWidth: 3,
           pointRadius: 0,
           fill: false,
           borderDash: [5, 5],
           showLine: true,
-          order: 2,
+          order: 3,
         },
         {
           label: "Maximum BPM",
@@ -472,7 +480,7 @@ function displayDetailedDailyView(data, startTime, endTime) {
             y: maxBPM,
           })),
           borderColor: "rgba(255, 206, 86, 1)",
-          borderWidth: 2,
+          borderWidth: 3,
           pointRadius: 0,
           fill: false,
           borderDash: [5, 5],
@@ -526,7 +534,8 @@ function displayDetailedDailyView(data, startTime, endTime) {
             display: true,
             text: "Heart Rate (BPM)",
           },
-          beginAtZero: true,
+          min: 40, // Set minimum value to 40
+          max: 200, // Set maximum value to 200
         },
       },
     },
@@ -619,7 +628,8 @@ function displayDetailedDailyView(data, startTime, endTime) {
             display: true,
             text: "SpO₂ Level (%)",
           },
-          beginAtZero: true,
+          min: 70, // Set minimum value to 80
+          max: 105, // Set maximum value to 100
         },
       },
     },
