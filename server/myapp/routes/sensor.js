@@ -10,13 +10,13 @@ const API_KEY = fs.readFileSync(__dirname + "/../keys/apikey").toString();
 
 /**
  * Middleware function to check the validity of the API key in the request headers.
- * 
+ *
  * @param {Object} req - The request object.
  * @param {Object} req.headers - The headers of the request.
  * @param {string} req.headers["x-api-key"] - The API key provided in the request headers.
  * @param {Object} res - The response object.
  * @param {Function} next - The next middleware function in the stack.
- * 
+ *
  * @returns {Object} - Returns a 401 status with a JSON error message if the API key is missing or invalid.
  */
 function checkApiKey(req, res, next) {
@@ -35,15 +35,15 @@ function checkApiKey(req, res, next) {
 
 /**
  * Middleware to get user device IDs based on the request headers or body.
- * 
+ *
  * This function checks for the presence of an "x-auth" header. If the header is not present,
  * it checks the request method and retrieves the user ID from the query string (for GET requests)
  * or from the request body (for POST requests). It then fetches the user from the database and
  * attaches the user's device IDs to the request object.
- * 
+ *
  * If the "x-auth" header is present, it decodes the JWT token to get the user's email, fetches
  * the user from the database, and attaches the user's device IDs to the request object.
- * 
+ *
  * @param {Object} req - The request object.
  * @param {Object} res - The response object.
  * @param {Function} next - The next middleware function.
@@ -66,10 +66,10 @@ async function getUserDeviceIds(req, res, next) {
         // Attach the user's device IDs to the request object
         req.device_ids = user.devices.map((device) => device.device_id);
         return next();
-            }
-          }
-          if (req.method === "POST") {
-            if (req.body.userId) {
+      }
+    }
+    if (req.method === "POST") {
+      if (req.body.userId) {
         // Get the user ID from the request body
         const userId = req.body.userId;
         const user = await User.findById(userId);
@@ -82,29 +82,29 @@ async function getUserDeviceIds(req, res, next) {
         // Attach the user's device IDs to the request object
         req.device_ids = user.devices.map((device) => device.device_id);
         return next();
-            }
-          }
-          // If no user ID is found in the request, return a 401 status with an error message
-          return res
-            .status(401)
-            .json({ success: false, msg: "Missing X-Auth header" });
-        }
-        const token = req.headers["x-auth"];
-        try {
-          // Decode the JWT token
-          const decoded = jwt.decode(token, secret);
-          const user = await User.findOne({ email: decoded.email });
-          if (!user) {
-            // If user is not found, return a 404 status with an error message
-            return res.status(404).json({ success: false, msg: "User not found" });
-          }
-          // Attach the user's device IDs to the request object
-          req.device_ids = user.devices.map((device) => device.device_id);
-          next();
-        } catch (ex) {
-          // If there is an error decoding the JWT, return a 401 status with an error message
-          res.status(401).json({ success: false, message: "Invalid JWT" });
-        }
+      }
+    }
+    // If no user ID is found in the request, return a 401 status with an error message
+    return res
+      .status(401)
+      .json({ success: false, msg: "Missing X-Auth header" });
+  }
+  const token = req.headers["x-auth"];
+  try {
+    // Decode the JWT token
+    const decoded = jwt.decode(token, secret);
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      // If user is not found, return a 404 status with an error message
+      return res.status(404).json({ success: false, msg: "User not found" });
+    }
+    // Attach the user's device IDs to the request object
+    req.device_ids = user.devices.map((device) => device.device_id);
+    next();
+  } catch (ex) {
+    // If there is an error decoding the JWT, return a 401 status with an error message
+    res.status(401).json({ success: false, message: "Invalid JWT" });
+  }
 }
 
 router.post("/", checkApiKey, async function (req, res, next) {
@@ -153,6 +153,12 @@ router.post("/", checkApiKey, async function (req, res, next) {
       bpm: data.bpm,
       spo2: data.spo2,
     });
+
+    // If the request body contains a createdAt field, set the sensor object's createdAt field
+    if (data.createdAt) {
+      data.createdAt = new Date(data.createdAt);
+      sensor.createdAt = data.createdAt;
+    }
 
     // Log the sensor object for debugging purposes
     console.log(sensor);
@@ -242,7 +248,6 @@ router.get("/device/:device_id", async function (req, res, next) {
   }
 });
 
-
 // Delete sensor data by sensor ID
 router.delete("/:id", async function (req, res, next) {
   try {
@@ -257,4 +262,3 @@ router.delete("/:id", async function (req, res, next) {
 });
 
 module.exports = router;
-
