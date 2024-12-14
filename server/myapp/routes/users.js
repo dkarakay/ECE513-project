@@ -11,18 +11,18 @@ const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 
 /**
  * Middleware to extract and set the user ID from the request.
- * 
+ *
  * This function checks for the presence of the "x-auth" header. If the header is not present,
  * it attempts to extract the user ID from the query string (for GET requests) or the request body (for POST requests).
  * If the user ID is found, it sets `req.userId` and calls the next middleware.
  * If the "x-auth" header is present, it decodes the JWT token to find the user and sets `req.userId`.
- * 
+ *
  * @param {Object} req - The request object.
  * @param {Object} res - The response object.
  * @param {Function} next - The next middleware function.
- * 
+ *
  * @returns {void}
- * 
+ *
  * @throws {Error} If the JWT token is invalid or the user is not found.
  */
 async function getUserId(req, res, next) {
@@ -59,7 +59,7 @@ async function getUserId(req, res, next) {
   }
 }
 
-router.post("/register",  async function (req, res) {
+router.post("/register", async function (req, res) {
   try {
     // Check if the email already exists
     const user = await User.findOne({ email: req.body.email });
@@ -96,7 +96,7 @@ router.post("/register",  async function (req, res) {
   }
 });
 
-router.post("/login",  async function (req, res) {
+router.post("/login", async function (req, res) {
   if (!req.body.email || !req.body.password) {
     return res.status(400).json({ error: "Missing email and/or password" });
   }
@@ -110,7 +110,7 @@ router.post("/login",  async function (req, res) {
     }
 
     // Check if password matches
-    if (bcrypt.compareSync(req.body.password), user.passwordHash) {
+    if (bcrypt.compareSync(req.body.password, user.passwordHash)) {
       const token = jwt.encode({ email: user.email }, secret);
 
       // Update user's last access time
@@ -146,7 +146,7 @@ router.get("/status", getUserId, async function (req, res) {
 });
 
 // Route to update the user's password
-router.post("/update-password", getUserId,  async (req, res) => {
+router.post("/update-password", getUserId, async (req, res) => {
   const currentPassword = req.body.currentPassword;
   const newPassword = req.body.newPassword;
 
@@ -183,7 +183,7 @@ router.post("/update-password", getUserId,  async (req, res) => {
   }
 });
 
-router.post("/update-measurement-settings", getUserId,  async (req, res) => {
+router.post("/update-measurement-settings", getUserId, async (req, res) => {
   const { device_id, measurementInterval, startTime, endTime } = req.body;
 
   const userId = req.userId || req.body.userId;
@@ -279,7 +279,7 @@ router.get("/me", getUserId, async function (req, res) {
 });
 
 // Route to add a new device to the user's account
-router.post("/add-device", getUserId,  async (req, res) => {
+router.post("/add-device", getUserId, async (req, res) => {
   const { device_id, measurementInterval, startTime, endTime } = req.body;
 
   // Check if all required fields are provided
@@ -405,7 +405,7 @@ router.get("/device/:device_id", async function (req, res, next) {
 });
 
 // Route to add user as a patient to physician's list
-router.post("/add-physician", getUserId,  async (req, res) => {
+router.post("/add-physician", getUserId, async (req, res) => {
   const { physicianId } = req.body;
   const userId = req.userId;
 
@@ -437,21 +437,34 @@ router.post("/add-physician", getUserId,  async (req, res) => {
     // Check if the user is already assigned to a physician
     if (user.physician && user.physician.equals(physicianId)) {
       console.log("User is already assigned to this physician.");
+      return res.status(200).json({
+        success: true,
+        message: "User is already assigned to this physician.",
+      });
+    } else {
+      // If the user is assigned to a different physician, remove them from that physician's list
+      if (user.physician && !user.physician.equals(physicianId)) {
+        const previousPhysician = await Physician.findById(user.physician);
+        if (previousPhysician) {
+          previousPhysician.patients.pull(userId);
+          await previousPhysician.save();
+        }
+      }
+
+      // Assign the user to the physician
+      user.physician = physicianId;
+      await user.save();
+
+      // Add the user to the physician's list of patients
+      physician.patients.push(userId);
+      await physician.save();
+
+      // Send success response
+      res.status(200).json({
+        success: true,
+        message: "User added as a patient successfully.",
+      });
     }
-
-    // Assign the user to the physician
-    user.physician = physicianId;
-    await user.save();
-
-    // Add the user to the physician's list of patients
-    physician.patients.push(userId);
-    await physician.save();
-
-    // Send success response
-    res.status(200).json({
-      success: true,
-      message: "User added as a patient successfully.",
-    });
   } catch (error) {
     // Handle server error
     console.error("Error adding user as a patient:", error);
