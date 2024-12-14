@@ -65,14 +65,26 @@ $(document).ready(function () {
   $("#selectedDate").val(today);
 });
 
+
+/**
+ * Populates the device dropdown menu with a list of devices.
+ * If there are multiple devices, an "All Devices" option is added.
+ * When the dropdown selection changes, it triggers fetching the latest sensor data.
+ *
+ * @param {Array} devices - An array of device objects.
+ * @param {string} devices[].device_id - The unique identifier for a device.
+ */
 function populateDeviceDropdown(devices) {
   const deviceSelect = $("#deviceSelect");
   deviceSelect.empty();
+  // If there are multiple devices, add an "All Devices" option
   if (devices.length > 1) {
     deviceSelect.append(
       $("<option></option>").attr("value", "all").text("All Devices")
     );
   }
+
+  // Append each device to the dropdown
   devices.forEach((device) => {
     deviceSelect.append(
       $("<option></option>")
@@ -80,17 +92,35 @@ function populateDeviceDropdown(devices) {
         .text(device.device_id)
     );
   });
+
+  // Add change event listener to fetch latest sensor data when a device is selected
   deviceSelect.change(function () {
     fetchLatestSensorData();
   });
 }
 
+/**
+ * Fetches the latest sensor data for the selected device and updates the UI with the retrieved data.
+ * If the selected device is "all", it fetches data for all devices.
+ * If the selected device is a specific device, it fetches data for that device.
+ * 
+ * The function makes an AJAX GET request to the appropriate endpoint and handles the response.
+ * If the response contains valid sensor data, it displays the data in the UI.
+ * If the response does not contain valid sensor data, it displays a "No data available" message.
+ * 
+ * In case of an error during the AJAX request, it logs the error to the console and shows an alert to the user.
+ * 
+ * @function fetchLatestSensorData
+ */
 function fetchLatestSensorData() {
   const selectedDeviceId = $("#deviceSelect").val();
+  // Determine the URL based on the selected device ID
   const url =
     selectedDeviceId === "all"
       ? "/sensor/latest"
       : `/sensor/latest?device_id=${selectedDeviceId}`;
+
+  // Make an AJAX GET request to fetch the latest sensor data
   $.ajax({
     url: url,
     method: "GET",
@@ -98,13 +128,17 @@ function fetchLatestSensorData() {
     dataType: "json",
   })
     .done(function (data, textStatus, jqXHR) {
+      // Log the latest sensor data to the console
       console.log("Latest sensor data:", data);
+
+      // Check if the required data fields are present
       if (
         data.bpm === undefined ||
         data.spo2 === undefined ||
         data.device_id === undefined ||
         data.createdAt === undefined
       ) {
+        // Display a message indicating no data is available
         $("#latestSensorData").html(`
           <div class="latest-data">
             <h2>Latest Sensor Data</h2>
@@ -112,7 +146,7 @@ function fetchLatestSensorData() {
           </div>
         `);
       } else {
-        // Display the sensor data in a fancy way
+        // Display the sensor data in a formatted way
         $("#latestSensorData").html(`
           <div class="latest-data">
             <h2>Latest Sensor Data</h2>
@@ -127,13 +161,18 @@ function fetchLatestSensorData() {
       }
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
+      // Log the error to the console
       console.error("Error fetching latest sensor data:", errorThrown);
+      // Display an alert indicating the failure
       alert("Failed to fetch latest sensor data. Please try again.");
     });
 }
 
 /**
- * Initialize the application once devices are loaded.
+ * Initializes the application by populating the device selection dropdown.
+ * - If no devices are found, an alert is shown to the user.
+ * - Adds an "All Devices" option to the dropdown if it doesn't already exist.
+ * - Selects the first device in the dropdown if there are any devices available.
  */
 function initializeApp() {
   const deviceSelect = $("#deviceSelect");
@@ -180,8 +219,31 @@ $("#generateView").on("click", function () {
   generateView();
 });
 
+
 /**
- * Generates the selected view by fetching data and rendering charts.
+ * Generates the view based on the selected view type, device, and time range.
+ * Validates the inputs and fetches sensor data accordingly.
+ * 
+ * @function generateView
+ * @returns {void}
+ * 
+ * @description
+ * This function performs the following steps:
+ * 1. Retrieves the selected view type, device ID, start time, and end time from the DOM.
+ * 2. Validates the device selection and time inputs.
+ * 3. Parses the start and end times.
+ * 4. Initializes the start and end times based on the view type (weekly or daily).
+ * 5. Fetches sensor data from the server using an AJAX request.
+ * 6. Displays the fetched data in the appropriate format (weekly summary or detailed daily view).
+ * 7. Handles errors and displays alerts for invalid inputs or failed data fetches.
+ * 8. Shows and hides a loading indicator during the data fetch process.
+ * 
+ * @example
+ * // HTML elements required:
+ * // <select id="viewType">, <select id="deviceSelect">, <input id="startTime">, <input id="endTime">, <input id="selectedDate">
+ * 
+ * // Call the function to generate the view
+ * generateView();
  */
 function generateView() {
   const viewType = $("#viewType").val();
@@ -189,6 +251,7 @@ function generateView() {
   const startTimeInput = $("#startTime").val();
   const endTimeInput = $("#endTime").val();
 
+  // Log the selected view type, device ID, start time, and end time to the console
   console.log("Selected View Type:", viewType);
   console.log("Selected Device ID:", selectedDeviceId);
   console.log("Start Time:", startTimeInput);
@@ -206,9 +269,11 @@ function generateView() {
     return;
   }
 
+  // Split and convert start and end time inputs to numbers
   const startTimeParts = startTimeInput.split(":").map(Number);
   const endTimeParts = endTimeInput.split(":").map(Number);
 
+  // Check if the time format is valid
   if (startTimeParts.length !== 2 || endTimeParts.length !== 2) {
     alert("Invalid time format.");
     return;
@@ -217,10 +282,12 @@ function generateView() {
   // Initialize start and end times
   let startTime, endTime;
 
+  // Set start and end times for weekly view
   if (viewType === "weekly") {
     endTime = new Date(); // Current time
     startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
   } else if (viewType === "daily") {
+    // Set start and end times for daily view
     const selectedDate = $("#selectedDate").val();
     if (!selectedDate) {
       alert("Please select a date for Detailed Daily View.");
@@ -244,24 +311,30 @@ function generateView() {
       59
     );
 
+    // Validate the date and time
     if (isNaN(startTime) || isNaN(endTime)) {
       alert("Invalid date or time.");
       return;
     }
 
+    // Ensure start time is before end time
     if (startTime >= endTime) {
       alert("Start time must be before end time.");
       return;
     }
   }
 
+  // Log the start and end times in ISO format
   console.log("Start Time (ISO):", startTime.toISOString());
   console.log("End Time (ISO):", endTime.toISOString());
 
+  // Determine the URL based on the selected device ID
   const url =
     selectedDeviceId === "all"
       ? "/sensor"
       : `/sensor?device_id=${selectedDeviceId}`;
+
+  // Make an AJAX GET request to fetch sensor data
   $.ajax({
     url: url,
     method: "GET",
@@ -269,13 +342,17 @@ function generateView() {
     dataType: "json",
   })
     .done(function (data, textStatus, jqXHR) {
+      // Log all sensor data to the console
       console.log("All sensor data:", data);
+
+      // Check if the data is valid and not empty
       if (!Array.isArray(data) || data.length === 0) {
         alert("No data available for the selected time range.");
         $("#loadingIndicator").hide();
         return;
       }
 
+      // Display the appropriate view based on the selected view type
       if (viewType === "weekly") {
         displayWeeklySummary(data);
         console.log("Weekly Summary Data:", data);
@@ -290,6 +367,7 @@ function generateView() {
       $("#loadingIndicator").hide();
     })
     .fail(function (jqXHR, textStatus, errorThrown) {
+      // Log the error to the console and display an alert
       console.error("Error fetching all sensor data:", errorThrown);
       alert("Failed to fetch all sensor data. Please try again.");
     });

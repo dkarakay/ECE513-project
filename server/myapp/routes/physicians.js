@@ -9,7 +9,19 @@ const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 
-// Middleware to get the logged-in physician's ID
+/**
+ * Middleware to get the physician ID from the JWT token in the request headers.
+ * 
+ * @param {Object} req - The request object.
+ * @param {Object} req.headers - The headers of the request.
+ * @param {string} req.headers["x-auth"] - The JWT token.
+ * @param {Object} res - The response object.
+ * @param {Function} next - The next middleware function.
+ * 
+ * @returns {Object} - Returns a 401 status with a message if the "x-auth" header is missing or the JWT is invalid.
+ *                     Returns a 404 status with a message if the physician is not found.
+ *                     Calls the next middleware function if the physician is found and sets req.physicianId.
+ */
 async function getPhysicianId(req, res, next) {
   console.log(req.headers);
   if (!req.headers["x-auth"]) {
@@ -34,7 +46,7 @@ async function getPhysicianId(req, res, next) {
   }
 }
 
-// Physician Registration Endpoint
+
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
 
@@ -136,57 +148,67 @@ router.get("/patients", getPhysicianId, async (req, res) => {
       "patients"
     );
 
+    // Check if the physician exists
     if (!physician) {
       return res
-        .status(404)
-        .json({ success: false, message: "Physician not found." });
+      .status(404)
+      .json({ success: false, message: "Physician not found." });
     }
+
+    // Fetch patients and their stats
     const patientsWithStats = await Promise.all(
       physician.patients.map(async (patientId) => {
-        const user = await User.findById(patientId);
+      // Find the patient by ID
+      const user = await User.findById(patientId);
 
-        if (!user) {
-          return null;
-        }
+      // If the user is not found, return null
+      if (!user) {
+        return null;
+      }
 
-        const now = new Date();
-        const sevenDaysAgo = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 7
-        );
+      // Calculate the date range for the last 7 days
+      const now = new Date();
+      const sevenDaysAgo = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 7
+      );
 
-        const query = {
-          device_id: { $in: user.devices.map((device) => device.device_id) },
-          createdAt: { $gte: sevenDaysAgo },
-        };
-        const devices = user.devices.map((device) => device.device_id);
-        const sensors = await Sensor.find(query).exec();
+      // Query to find sensor data for the user's devices in the last 7 days
+      const query = {
+        device_id: { $in: user.devices.map((device) => device.device_id) },
+        createdAt: { $gte: sevenDaysAgo },
+      };
+      const devices = user.devices.map((device) => device.device_id);
+      const sensors = await Sensor.find(query).exec();
 
-        const bpms = sensors.map((sensor) => sensor.bpm);
-        const averageBpm =
-          bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
-        const maxBpm = Math.max(...bpms);
-        const minBpm = Math.min(...bpms);
+      // Calculate BPM statistics
+      const bpms = sensors.map((sensor) => sensor.bpm);
+      const averageBpm =
+        bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
+      const maxBpm = Math.max(...bpms);
+      const minBpm = Math.min(...bpms);
 
-        console.log("Patient summary:", {
-          name: user.email,
-          avg_hr: averageBpm,
-          min_hr: minBpm,
-          max_hr: maxBpm,
-          devices: devices,
-          measurement_frequency: user.measurementFrequency || 30,
-        });
+      // Log patient summary
+      console.log("Patient summary:", {
+        name: user.email,
+        avg_hr: averageBpm,
+        min_hr: minBpm,
+        max_hr: maxBpm,
+        devices: devices,
+        measurement_frequency: user.measurementFrequency || 30,
+      });
 
-        return {
-          ...user.toObject(),
-          stats: {
-            averageBpm,
-            maxBpm,
-            minBpm,
-          },
-          devices,
-        };
+      // Return patient data with stats
+      return {
+        ...user.toObject(),
+        stats: {
+        averageBpm,
+        maxBpm,
+        minBpm,
+        },
+        devices,
+      };
       })
     );
 
@@ -231,19 +253,25 @@ router.post("/patients/add", async (req, res) => {
   const { physicianId, patientId } = req.body;
 
   try {
+    // Find the physician by ID
     const physician = await Physician.findById(physicianId);
 
+    // If the physician is not found, return a 404 status
     if (!physician) {
       return res
         .status(404)
         .json({ success: false, message: "Physician not found." });
     }
 
+    // Add the patient ID to the physician's patients array
     physician.patients.push(patientId);
+    // Save the updated physician document
     await physician.save();
 
+    // Respond with a success message
     res.json({ success: true, message: "Patient added successfully." });
   } catch (error) {
+    // Log any errors and respond with a 500 status
     console.error("Error adding patient:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
@@ -254,13 +282,16 @@ router.get("/patient-summary/:userId", async (req, res) => {
   const userId = req.params.userId;
 
   try {
+    // Find the user by ID
     const user = await User.findById(userId);
     if (!user) {
+      // If the user is not found, return a 404 status
       return res
         .status(404)
         .json({ success: false, message: "User not found." });
     }
 
+    // Calculate the date range for the last 7 days
     const now = new Date();
     const sevenDaysAgo = new Date(
       now.getFullYear(),
@@ -268,22 +299,30 @@ router.get("/patient-summary/:userId", async (req, res) => {
       now.getDate() - 7
     );
 
+    // Query to find sensor data for the user's devices in the last 7 days
     const query = {
       device_id: { $in: user.devices.map((device) => device.device_id) },
       createdAt: { $gte: sevenDaysAgo },
     };
 
+    // Execute the query to find sensor data
     const sensors = await Sensor.find(query).exec();
 
+    // If no sensor data is found, return a 404 status
     if (!sensors || sensors.length === 0) {
       return res.status(404).json({ message: "No data found" });
     }
+
+    // Extract device IDs and BPM values from the sensor data
     const devices = user.devices.map((device) => device.device_id);
     const bpms = sensors.map((sensor) => sensor.bpm);
+
+    // Calculate average, maximum, and minimum BPM values
     const averageBpm = bpms.reduce((sum, bpm) => sum + bpm, 0) / bpms.length;
     const maxBpm = Math.max(...bpms);
     const minBpm = Math.min(...bpms);
 
+    // Log patient summary
     console.log("Patient summary:", {
       name: user.email,
       avg_hr: averageBpm,
@@ -292,6 +331,8 @@ router.get("/patient-summary/:userId", async (req, res) => {
       devices: devices,
       measurement_frequency: user.measurementFrequency || 30,
     });
+
+    // Respond with the patient summary
     res.json({
       name: user.email, // Assuming email as name, change if needed
       avg_hr: averageBpm,
@@ -301,6 +342,7 @@ router.get("/patient-summary/:userId", async (req, res) => {
       measurement_frequency: user.measurementFrequency || 30, // Assuming a default value
     });
   } catch (error) {
+    // Log any errors and respond with a 500 status
     console.error("Error fetching patient summary:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
