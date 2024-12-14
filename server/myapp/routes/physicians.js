@@ -8,7 +8,6 @@ const jwt = require("jwt-simple");
 const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
-const csrfProtection = require('csurf')({ cookie: true });
 
 /**
  * Middleware to get the physician ID from the JWT token in the request headers.
@@ -48,8 +47,8 @@ async function getPhysicianId(req, res, next) {
 }
 
 
-router.post("/register", csrfProtection, async (req, res) => {
-  const { email, password } = xss(req.body);
+router.post("/register", async (req, res) => {
+  const { email, password } = req.body;
 
   // Basic validation
   if (!email || !password) {
@@ -90,8 +89,8 @@ router.post("/register", csrfProtection, async (req, res) => {
 });
 
 // Physician Login Endpoint
-router.post("/login", csrfProtection,  async (req, res) => {
-  const { email, password } = xss(req.body);
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
 
   // Basic validation
   if (!email || !password) {
@@ -250,8 +249,8 @@ router.get("/:id", async (req, res) => {
 });
 
 // Add patient to physician's list
-router.post("/patients/add", csrfProtection,  async (req, res) => {
-  const { physicianId, patientId } = xss(req.body);
+router.post("/patients/add",  async (req, res) => {
+  const { physicianId, patientId } = req.body;
 
   try {
     // Find the physician by ID

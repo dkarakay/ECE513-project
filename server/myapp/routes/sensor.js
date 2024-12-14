@@ -7,7 +7,6 @@ const jwt = require("jwt-simple");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 const API_KEY = fs.readFileSync(__dirname + "/../keys/apikey").toString();
-const csrfProtection = require('csurf')({ cookie: true });
 
 /**
  * Middleware function to check the validity of the API key in the request headers.
@@ -72,7 +71,7 @@ async function getUserDeviceIds(req, res, next) {
     if (req.method === "POST") {
       if (req.body.userId) {
         // Get the user ID from the request body
-        const userId = xss(req.body.userId);
+        const userId = req.body.userId;
         const user = await User.findById(userId);
         if (!user) {
           // If user is not found, return a 404 status with an error message
@@ -108,13 +107,13 @@ async function getUserDeviceIds(req, res, next) {
   }
 }
 
-router.post("/", checkApiKey, csrfProtection, async function (req, res, next) {
+router.post("/", checkApiKey, async function (req, res, next) {
   try {
     // Log the request body for debugging purposes
     console.log(req.body);
 
     // Extract the data from the request body
-    let data = xss(req.body.data);
+    let data = req.body.data;
 
     // Parse data if it is a string
     if (typeof data === "string") {
@@ -150,7 +149,7 @@ router.post("/", checkApiKey, csrfProtection, async function (req, res, next) {
 
     // Create a new sensor object with the request body device_id and spo2, bpm
     var sensor = new Sensor({
-      device_id: xss(req.body.device_id),
+      device_id: req.body.device_id,
       bpm: data.bpm,
       spo2: data.spo2,
     });

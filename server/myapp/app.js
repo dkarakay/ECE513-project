@@ -2,9 +2,7 @@ var createError = require("http-errors");
 var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
-var csurf = require('csurf');
 var logger = require("morgan");
-var xss = require("xss");
 const db = require("./db");
 
 const bodyParser = require("body-parser");
@@ -47,8 +45,6 @@ app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(csurf({ cookie: true }));
-app.use(xss);
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/users", usersRouter);
