@@ -7,6 +7,7 @@ const jwt = require("jwt-simple");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 const API_KEY = fs.readFileSync(__dirname + "/../keys/apikey").toString();
+const csrfProtection = require('csurf')({ cookie: true });
 
 /**
  * Middleware function to check the validity of the API key in the request headers.
@@ -107,7 +108,7 @@ async function getUserDeviceIds(req, res, next) {
   }
 }
 
-router.post("/", checkApiKey, async function (req, res, next) {
+router.post("/", checkApiKey, csrfProtection, async function (req, res, next) {
   try {
     // Log the request body for debugging purposes
     console.log(req.body);

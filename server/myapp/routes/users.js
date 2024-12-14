@@ -8,6 +8,7 @@ const jwt = require("jwt-simple");
 const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
+const csrfProtection = require('csurf')({ cookie: true });
 
 /**
  * Middleware to extract and set the user ID from the request.
@@ -59,7 +60,7 @@ async function getUserId(req, res, next) {
   }
 }
 
-router.post("/register", async function (req, res) {
+router.post("/register", csrfProtection, async function (req, res) {
   try {
     // Check if the email already exists
     const user = await User.findOne({ email: req.body.email });
@@ -96,7 +97,7 @@ router.post("/register", async function (req, res) {
   }
 });
 
-router.post("/login", async function (req, res) {
+router.post("/login", csrfProtection, async function (req, res) {
   if (!req.body.email || !req.body.password) {
     return res.status(400).json({ error: "Missing email and/or password" });
   }
@@ -146,7 +147,7 @@ router.get("/status", getUserId, async function (req, res) {
 });
 
 // Route to update the user's password
-router.post("/update-password", getUserId, async (req, res) => {
+router.post("/update-password", getUserId, csrfProtection, async (req, res) => {
   const currentPassword = req.body.currentPassword;
   const newPassword = req.body.newPassword;
 
@@ -183,7 +184,7 @@ router.post("/update-password", getUserId, async (req, res) => {
   }
 });
 
-router.post("/update-measurement-settings", getUserId, async (req, res) => {
+router.post("/update-measurement-settings", getUserId, csrfProtection, async (req, res) => {
   const { device_id, measurementInterval, startTime, endTime } = req.body;
 
   const userId = req.userId || req.body.userId;
@@ -279,7 +280,7 @@ router.get("/me", getUserId, async function (req, res) {
 });
 
 // Route to add a new device to the user's account
-router.post("/add-device", getUserId, async (req, res) => {
+router.post("/add-device", getUserId, csrfProtection, async (req, res) => {
   const { device_id, measurementInterval, startTime, endTime } = req.body;
 
   // Check if all required fields are provided
@@ -405,7 +406,7 @@ router.get("/device/:device_id", async function (req, res, next) {
 });
 
 // Route to add user as a patient to physician's list
-router.post("/add-physician", getUserId, async (req, res) => {
+router.post("/add-physician", getUserId, csrfProtection, async (req, res) => {
   const { physicianId } = req.body;
   const userId = req.userId;
 
