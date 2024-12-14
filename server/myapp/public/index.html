@@ -25,13 +25,14 @@
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        margin-top: 30px;
+        margin-top: 15px;
       }
 
       .member {
         text-align: center;
-        margin-bottom: 30px;
-        padding: 15px;
+        margin-bottom: 20px;
+        padding: 5px;
+        flex: 1 1 30%; /* Adjusted to ensure members fit in one row */
       }
 
       .member img {
@@ -39,12 +40,12 @@
         height: auto;
         max-width: 200px;
         border-radius: 50%;
-        margin-bottom: 15px;
+        margin-bottom: 5px;
       }
 
       @media (max-width: 768px) {
         .member {
-          padding: 10px;
+          padding: 5px;
         }
 
         .member img {
@@ -54,7 +55,6 @@
 
       .auth-links,
       .user-info {
-        margin-top: 20px;
         text-align: left;
       }
 
@@ -76,6 +76,30 @@
           text-align: center;
         }
       }
+
+      .bottom-left-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 20px;
+        text-align: center;
+      }
+
+      .project-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .logo {
+        max-width: 50px;
+        height: auto;
+      }
+
+      p {
+        line-height: 1.6; /* Adjust the value as needed */
+      }
     </style>
   </head>
   <body>
@@ -88,10 +112,39 @@
           <a href="physician-login.html" class="nav-link">Physician Login</a>
         </div>
 
-        <div class="col-xs-12 col-sm-6 auth-links" id="userInfo" style="display: none;">
+        <div
+          class="col-xs-12 col-sm-6 auth-links"
+          id="userInfo"
+          style="display: none"
+        >
           <a href="account.html" id="userEmail" class="nav-link"></a>
           <a href="#" id="btnLogOut" class="nav-link">Log Out</a>
         </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xs-12">
+          <div class="project-header">
+            <h1>Heart Rate Monitoring System</h1>
+            <img src="images/heart_logo.PNG" alt="Heart Logo" class="logo" />
+          </div>
+          <p>
+            The Heart Rate Monitoring System is a low-cost, IoT-enabled web
+            application designed to monitor heart rate and blood oxygen
+            saturation levels throughout the day. The system comprises three
+            main components: Backend, Frontend, and Embedded Device
+            implementations. This section provides a detailed narrative of how
+            each element was implemented. The project monitors the health status
+            of the patients' hearts and provides the necessary information to
+            their associated physicians. The system can monitor the patient's
+            blood pressure and send the data to the server. The server analyzes
+            the data and notifies the physician of any abnormality. The
+            physician can access the patient's ata and make necessary decisions.
+            Each physician can have multiple patients, and display the data of
+            the patients in a table format.
+          </p>
+        </div>
+      </div>
 
       <!-- Page Heading -->
       <div class="row">
@@ -100,37 +153,41 @@
         </div>
       </div>
 
-      <div>
-        <h2>Health Monitoring System</h2>
-        <p>
-          The project monitors the health status of the patients and provide the necessary 
-          information to the their associated physicians. The system can monitor the patient's
-          blood pressure and send the data to the server. The server analyzes the data and
-          notify the physician if there is any abnormality. The physician can access the
-          the patient's data and make necessary decisions. Each pyhsician can have multiple patients, and 
-          display the data of the patients in a table format.
-      </div>
-
       <!-- Team Members -->
       <div class="team">
         <div class="member col-xs-12 col-sm-6 col-md-4">
-          <img src="images/deniz.jpeg" alt="Deniz Karakay" class="img-responsive center-block" />
+          <img
+            src="images/deniz.jpeg"
+            alt="Deniz Karakay"
+            class="img-responsive center-block"
+          />
           <p><strong>Deniz Karakay</strong></p>
           <p>dkarakay@arizona.edu</p>
         </div>
         <div class="member col-xs-12 col-sm-6 col-md-4">
-          <img src="images/serhat.jpeg" alt="Serhat Furkan Bozkurt" class="img-responsive center-block" />
+          <img
+            src="images/serhat.jpeg"
+            alt="Serhat Furkan Bozkurt"
+            class="img-responsive center-block"
+          />
           <p><strong>Serhat Furkan Bozkurt</strong></p>
           <p>sfbozkurt@arizona.edu</p>
         </div>
         <div class="member col-xs-12 col-sm-6 col-md-4">
-          <img src="images/umut.jpg" alt="Hasan Umut Suluhan" class="img-responsive center-block" />
+          <img
+            src="images/umut.jpg"
+            alt="Hasan Umut Suluhan"
+            class="img-responsive center-block"
+          />
           <p><strong>Hasan Umut Suluhan</strong></p>
           <p>suluhan@arizona.edu</p>
         </div>
       </div>
+      <!-- Buttons at the bottom -->
+      <div class="bottom-left-buttons">
+        <a href="reference.html">Reference</a>
+        <a href="https://github.com/dkarakay/ece513-project">GitHub</a>
+      </div>
     </div>
-
-
   </body>
 </html>
