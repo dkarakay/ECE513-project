@@ -49,7 +49,7 @@ async function getPhysicianId(req, res, next) {
 
 
 router.post("/register", csrfProtection, async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = xss(req.body);
 
   // Basic validation
   if (!email || !password) {
@@ -91,7 +91,7 @@ router.post("/register", csrfProtection, async (req, res) => {
 
 // Physician Login Endpoint
 router.post("/login", csrfProtection,  async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = xss(req.body);
 
   // Basic validation
   if (!email || !password) {
@@ -251,7 +251,7 @@ router.get("/:id", async (req, res) => {
 
 // Add patient to physician's list
 router.post("/patients/add", csrfProtection,  async (req, res) => {
-  const { physicianId, patientId } = req.body;
+  const { physicianId, patientId } = xss(req.body);
 
   try {
     // Find the physician by ID

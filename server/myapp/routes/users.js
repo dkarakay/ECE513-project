@@ -9,6 +9,7 @@ const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const secret = fs.readFileSync(__dirname + "/../keys/jwtkey").toString();
 const csrfProtection = require('csurf')({ cookie: true });
+const xss = require("xss");
 
 /**
  * Middleware to extract and set the user ID from the request.
@@ -37,7 +38,7 @@ async function getUserId(req, res, next) {
     }
     if (req.method === "POST") {
       if (req.body.userId) {
-        req.userId = req.body.userId;
+        req.userId = xss(req.body.userId);
         return next();
       }
     }
@@ -71,13 +72,13 @@ router.post("/register", csrfProtection, async function (req, res) {
     }
 
     // Create a new user with hashed password
-    const passwordHash = bcrypt.hashSync(req.body.password, 10);
+    const passwordHash = bcrypt.hashSync(xss(req.body.password), 10);
     const newUser = new User({
-      email: req.body.email,
+      email: xss(req.body.email),
       passwordHash: passwordHash,
       devices: [
         {
-          device_id: req.body.device_id,
+          device_id: xss(req.body.device_id),
           measurementInterval: 30,
           startTime: "06:00",
           endTime: "22:00",
@@ -111,7 +112,7 @@ router.post("/login", csrfProtection, async function (req, res) {
     }
 
     // Check if password matches
-    if (bcrypt.compareSync(req.body.password, user.passwordHash)) {
+    if (bcrypt.compareSync(xss(req.body.password), user.passwordHash)) {
       const token = jwt.encode({ email: user.email }, secret);
 
       // Update user's last access time
@@ -148,8 +149,8 @@ router.get("/status", getUserId, async function (req, res) {
 
 // Route to update the user's password
 router.post("/update-password", getUserId, csrfProtection, async (req, res) => {
-  const currentPassword = req.body.currentPassword;
-  const newPassword = req.body.newPassword;
+  const currentPassword = xss(req.body.currentPassword);
+  const newPassword = xss(req.body.newPassword);
 
   // Check if both current and new passwords are provided
   if (!currentPassword || !newPassword) {
@@ -185,9 +186,9 @@ router.post("/update-password", getUserId, csrfProtection, async (req, res) => {
 });
 
 router.post("/update-measurement-settings", getUserId, csrfProtection, async (req, res) => {
-  const { device_id, measurementInterval, startTime, endTime } = req.body;
+  const { device_id, measurementInterval, startTime, endTime } = xss(req.body);
 
-  const userId = req.userId || req.body.userId;
+  const userId = req.userId || xss(req.body.userId);
 
   // Check if device_id and measurementInterval are provided
   if (!device_id || !measurementInterval) {
@@ -281,7 +282,7 @@ router.get("/me", getUserId, async function (req, res) {
 
 // Route to add a new device to the user's account
 router.post("/add-device", getUserId, csrfProtection, async (req, res) => {
-  const { device_id, measurementInterval, startTime, endTime } = req.body;
+  const { device_id, measurementInterval, startTime, endTime } = xss(req.body);
 
   // Check if all required fields are provided
   if (!device_id || !measurementInterval || !startTime || !endTime) {
@@ -407,7 +408,7 @@ router.get("/device/:device_id", async function (req, res, next) {
 
 // Route to add user as a patient to physician's list
 router.post("/add-physician", getUserId, csrfProtection, async (req, res) => {
-  const { physicianId } = req.body;
+  const { physicianId } = xss(req.body);
   const userId = req.userId;
 
   // Check if physicianId and userId are provided
