@@ -1,4 +1,5 @@
 # ECE513 Project [Link](https://heart.karakay.me/)
+## Heart Rate Monitoring System
 <img src="https://github.com/user-attachments/assets/94552811-9398-45b4-9df9-318a5ac7e6af" alt="heart_logo" width="250">
 
 </br>
@@ -97,3 +98,7 @@ curl -X POST https://heart.karakay.me/sensor \
 ## Particle
 
 `particle/`
+
+- Open project on VSCode
+- Compile ```particle.cpp```
+- Flash it for Photon 2
