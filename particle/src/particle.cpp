@@ -1,3 +1,6 @@
+// This project uses the Particle Photon device.
+// MAX30102 SENSOR
+
 #include "Particle.h"
 
 #include <HttpClient.h>
@@ -7,38 +10,36 @@
 #include "MAX30105.h"
 #include "algorithm_by_RF.h"
 
+// Define State enum for the state machine
 enum State { IDLE, REQUEST_MEASUREMENT, SEND, WAIT, SAVE_TO_EEPROM, EMPTY };
 SYSTEM_THREAD(ENABLED);  // uncomment this to use your particle device without
                          // WIFI connection
 
 MAX30105 sensor;
 
-int LED = D7;
-
+int LED = D7;                              // LED pin
 uint32_t aun_ir_buffer[RFA_BUFFER_SIZE];   // infrared LED sensor data
 uint32_t aun_red_buffer[RFA_BUFFER_SIZE];  // red LED sensor data
-int32_t n_heart_rate;
-float n_spo2;
-int numSamples;
+int32_t n_heart_rate;                      // heart rate
+float n_spo2;                              // oxygen saturation
+int numSamples;                            // number of samples
 
-// float SPO2_LOWER_BOUNDRY = 94;
-
+// State variables
 State currentState = REQUEST_MEASUREMENT;
+
 bool dataSent = false;
 unsigned long previousMillis = 0;
 unsigned long stateStartMillis = 0;
 const long interval = 500;  // interval at which to blink (milliseconds)
-// const long requestTimeout = 300000;                       // 5 1 minute
-// timeout for taking measurement const long waitDuration = 60000;  // 1 2
-// minutes wait duration
 const long requestTimeout = 300000;  // 5 minutes timeout for taking measurement
 unsigned long measurementInterval = 1800000;  // 30 minutes wait
 bool ledState = false;
 int dataSentCount = 0;
 
+// EEPROM variables
 unsigned long firstSaveTimestamp = 0;
-String startTime = "06:00";
-String endTime = "22:00";
+String startTime = "06:00";  // Default start time
+String endTime = "22:00";    // Default end time
 int eepromDataCount = 0;
 
 HttpClient http;
@@ -48,18 +49,27 @@ JsonParserStatic<1024, 20> parser1;
 
 bool useParticlePublish = false;  // Settings variable to determine the method
 
+// Converts time in "HH:MM" format to minutes
+// Parameters:
+//   - time: a string representing time in "HH:MM" format
+// Returns: the total minutes since midnight
 int timeToMinutes(const char *time) {
   int hours = (time[0] - '0') * 10 + (time[1] - '0');
   int minutes = (time[3] - '0') * 10 + (time[4] - '0');
   return hours * 60 + minutes;
 }
 
+// Gets the current time in minutes since midnight
+// Returns: the current time in minutes since midnight
 int getCurrentTimeInMinutes() {
   int currentHour = Time.hour();
   int currentMinute = Time.minute();
   return currentHour * 60 + currentMinute;
 }
 
+// Fetches configuration from the server
+// No parameters
+// No return value
 void getConfigFromServer() {
   if (Particle.connected()) {
     // Configure the request
@@ -75,21 +85,12 @@ void getConfigFromServer() {
       parser1.addString(response.body);
       // Parse the JSON response
       if (parser1.parse()) {
-        // Print measurementInterval, startTime, and endTime
+        // Update measurementInterval, startTime, and endTime
         measurementInterval =
             parser1.getReference().key("measurementInterval").valueInt() *
             60000;
         startTime = parser1.getReference().key("startTime").valueString();
         endTime = parser1.getReference().key("endTime").valueString();
-        /*Serial.println("--------------------");
-        Serial.print("Measurement Interval: ");
-        Serial.println(measurementInterval);
-        Serial.print("Start Time: ");
-        Serial.println(startTime);
-        Serial.print("End Time: ");
-        Serial.println(endTime);
-        Serial.println("--------------------");*/
-
       } else {
         Serial.println("Failed to parse JSON response.");
       }
@@ -102,17 +103,29 @@ void getConfigFromServer() {
   }
 }
 
+// Handles configuration update events
+// Parameters:
+//   - event: the name of the event
+//   - data: the data associated with the event
+// No return value
 void configUpdateHandler(const char *event, const char *data) {
   Serial.println("Received configuration update event");
   getConfigFromServer();
 }
 
+// Prints the current time to the serial monitor
+// No parameters
+// No return value
 void printCurrentTime() {
   Serial.print("Current time: ");
   Serial.println(Time.format(Time.now(), "%Y-%m-%d %H:%M:%S"));
 }
 
-// Save data to EEPROM
+// Saves data to EEPROM
+// Parameters:
+//   - averageBPM: the average beats per minute to save
+//   - averageSPO2: the average oxygen saturation to save
+// No return value
 void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   int address = eepromDataCount * sizeof(float) * 2;
   EEPROM.put(address, averageBPM);
@@ -121,7 +134,11 @@ void saveDataToEEPROM(float averageBPM, float averageSPO2) {
   Serial.println("DATA SAVED to EEPROM");
 }
 
-// Send data to the server
+// Sends data to the server or Particle Cloud
+// Parameters:
+//   - averageBPM: the average beats per minute to send
+//   - averageSPO2: the average oxygen saturation to send
+// No return value
 void sendDataParticle(float averageBPM, float averageSPO2) {
   if (useParticlePublish) {
     if (Particle.connected()) {
@@ -188,7 +205,10 @@ void sendDataParticle(float averageBPM, float averageSPO2) {
     }
   }
 }
-// Submit stored data to the server from EEPROM
+
+// Submits stored data to the server from EEPROM
+// No parameters
+// No return value
 void submitStoredData() {
   for (int i = 0; i < eepromDataCount; i++) {
     int address = i * sizeof(float) * 2;
@@ -232,7 +252,9 @@ void submitStoredData() {
   eepromDataCount = 0;  // Reset the count after submitting all data
 }
 
-// Check and reset EEPROM data after 24 hours
+// Checks and resets EEPROM data after 24 hours
+// No parameters
+// No return value
 void checkAndResetEEPROM() {
   unsigned long currentMillis = millis();
   if (firstSaveTimestamp != 0 &&
@@ -275,7 +297,7 @@ void setup() {
   sensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth,
                adcRange);
   sensor.getINT1();  // clear the status registers by reading
-  sensor.getINT2();
+  sensor.getINT2();  // clear the status registers by reading
   numSamples = 0;
   stateStartMillis = millis();
 }
@@ -287,15 +309,17 @@ void loop() {
 
   sensor.check();
   while (sensor.available()) {
+    // Read the sensor data and store it in the buffer
     aun_red_buffer[numSamples] = sensor.getFIFOIR();
     aun_ir_buffer[numSamples] = sensor.getFIFORed();
 
     numSamples++;
     sensor.nextSample();
 
+    // If we have enough samples, calculate the heart rate and SpO2
+    // Buffer size : Sampling Time (ST) * Sampling Frequency (FS)
+    // ST = 4 seconds and FS = 50 Hz, buffer size = 200
     if (numSamples == RFA_BUFFER_SIZE) {
-      // calculate heart rate and SpO2 after RFA_BUFFER_SIZE samples (ST
-      // seconds of samples) using Robert's method
       rf_heart_rate_and_oxygen_saturation(
           aun_ir_buffer, RFA_BUFFER_SIZE, aun_red_buffer, &n_spo2,
           &ch_spo2_valid, &n_heart_rate, &ch_hr_valid, &ratio, &correl);
