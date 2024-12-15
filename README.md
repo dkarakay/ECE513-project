@@ -10,6 +10,14 @@
 - Serhat Furkan Bozkurt
 - Hasan Umut Suluhan
 
+## Final Demo Video
+
+[![Watch the Final video](https://img.youtube.com/vi/aQyRbCXecAo/0.jpg)](https://www.youtube.com/watch?v=aQyRbCXecAo)
+
+## Pitch Video
+
+[![Watch the Pitch video](https://img.youtube.com/vi/uhXSyqAdpeg/0.jpg)](https://www.youtube.com/watch?v=uhXSyqAdpeg)
+
 ## Milestone Demo Video
 
 [![Watch the Milestone video](https://img.youtube.com/vi/vwafzZx3cuQ/0.jpg)](https://www.youtube.com/watch?v=vwafzZx3cuQ)
@@ -102,3 +110,4 @@ curl -X POST https://heart.karakay.me/sensor \
 - Open project on VSCode
 - Compile ```particle.cpp```
 - Flash it for Photon 2
+
