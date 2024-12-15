@@ -46,7 +46,6 @@
         <li><a href="#addDeviceTab">Add New Device</a></li>
         <li><a href="#deleteDeviceTab">Delete Device</a></li>
         <li><a href="#assignPhysicianTab">Assign Physician</a></li>
-
       </ul>
 
       <div id="updatePasswordTab" class="tab-content active">
@@ -80,6 +79,9 @@
         </div>
         <button id="btnUpdatePassword" class="btn btn-primary">
           Update Password
+        </button>
+        <div id="passwordUpdateStatus"></div>
+        <!-- Added this line -->
       </div>
 
       <div id="updateMeasurementSettingsTab" class="tab-content">
@@ -173,7 +175,9 @@
           <label for="deleteDeviceSelect">Select Device:</label>
           <select id="deleteDeviceSelect" class="form-control"></select>
         </div>
-        <button id="btnDeleteDevice" class="btn btn-primary">Delete Device</button>
+        <button id="btnDeleteDevice" class="btn btn-primary">
+          Delete Device
+        </button>
         <div id="deviceDeleteStatus"></div>
       </div>
 
@@ -184,12 +188,12 @@
           <label for="physicianSelect">Select Physician:</label>
           <select id="physicianSelect" class="form-control"></select>
         </div>
-        <button id="btnAssignPhysician" class="btn btn-primary">Assign Physician</button>
+        <button id="btnAssignPhysician" class="btn btn-primary">
+          Assign Physician
+        </button>
         <div id="physicianAssignStatus"></div>
-
       </div>
     </div>
-
 
     <script>
       (function () {

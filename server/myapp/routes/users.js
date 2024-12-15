@@ -152,6 +152,7 @@ router.post("/update-password", getUserId, async (req, res) => {
 
   // Check if both current and new passwords are provided
   if (!currentPassword || !newPassword) {
+    console.log("Current and new password are required.");
     return res.status(400).send("Current and new password are required.");
   }
 
@@ -165,6 +166,7 @@ router.post("/update-password", getUserId, async (req, res) => {
     // Compare the current password with the stored password hash
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isMatch) {
+      console.log("Current password is incorrect.");
       return res.status(400).send("Current password is incorrect.");
     }
 
@@ -176,7 +178,10 @@ router.post("/update-password", getUserId, async (req, res) => {
     await user.save();
 
     // Send success response
-    res.status(200).send("Password updated successfully.");
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully!",
+    });
   } catch (error) {
     // Handle server error
     res.status(500).send("Server error.");

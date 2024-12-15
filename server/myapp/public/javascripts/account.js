@@ -79,11 +79,11 @@ function populateDeleteDeviceDropdown(devices) {
 
 /**
  * Fetches measurement settings for the selected device and updates the UI with the retrieved data.
- * 
+ *
  * This function retrieves the measurement settings (measurement interval, start time, and end time)
  * for the device selected in the #deviceSelect dropdown. It sends an AJAX GET request to the server
  * with the selected device ID and includes an authentication token in the request headers.
- * 
+ *
  * On a successful response, it updates the UI elements with the retrieved measurement settings.
  * If the request fails, it logs an error message to the console.
  */
@@ -109,7 +109,7 @@ function fetchMeasurementSettings() {
 
 /**
  * Updates the user's password by sending a request to the server.
- * 
+ *
  * This function performs the following steps:
  * 1. Retrieves the current password, new password, and confirm password from the input fields.
  * 2. Validates that all fields are filled.
@@ -118,7 +118,7 @@ function fetchMeasurementSettings() {
  * 5. Sends an AJAX POST request to update the password on the server.
  * 6. Displays a success message if the password is updated successfully.
  * 7. Displays an error message if the password update fails.
- * 
+ *
  * @function
  */
 function updatePassword() {
@@ -159,9 +159,11 @@ function updatePassword() {
     dataType: "json", // Expected response data type
   })
     .done(function (data) {
+      console.log("Password updated successfully:", data); // Log success message
       $("#passwordUpdateStatus").html("Password updated successfully."); // Display success message
     })
     .fail(function (jqXHR) {
+      console.log("Failed to update password:", jqXHR); // Log error message
       $("#passwordUpdateStatus").html(
         "Failed to update password: " + jqXHR.responseText // Display error message
       );
@@ -170,13 +172,13 @@ function updatePassword() {
 
 /**
  * Updates the measurement settings for a selected device by sending an AJAX request to the server.
- * The function retrieves values from the DOM elements with IDs 'deviceSelect', 'measurementInterval', 
+ * The function retrieves values from the DOM elements with IDs 'deviceSelect', 'measurementInterval',
  * 'startTime', and 'endTime'. If any of these values are missing, an alert is shown to the user.
- * 
+ *
  * The AJAX request is sent to the endpoint '/users/update-measurement-settings' with the method 'POST'.
  * The request includes a JSON payload containing the device ID, measurement interval, start time, and end time.
  * The request also includes an authentication token retrieved from local storage.
- * 
+ *
  * On success, a success message is logged to the console and displayed in the DOM element with ID 'measurementUpdateStatus'.
  * On failure, an error message is logged to the console and displayed in the same DOM element.
  */
@@ -272,11 +274,11 @@ function addDevice() {
 
 /**
  * Deletes a selected device by making an AJAX DELETE request.
- * 
+ *
  * This function retrieves the selected device ID from a dropdown menu,
  * sends a DELETE request to the server to remove the device, and updates
  * the UI based on the success or failure of the request.
- * 
+ *
  * @function deleteDevice
  * @returns {void}
  */
@@ -353,14 +355,14 @@ function populatePhysicianDropdown(physicians, currentPhysicianId) {
 
 /**
  * Assigns a physician to the user based on the selected physician ID from the dropdown.
- * 
+ *
  * This function retrieves the selected physician ID from the dropdown with the ID "physicianSelect".
  * If no physician is selected, it alerts the user to select a physician.
  * It then sends an AJAX POST request to the server to assign the physician to the user.
- * 
+ *
  * On successful assignment, it logs the success message and updates the HTML element with ID "physicianAssignStatus".
  * It also reloads the page to reflect the changes.
- * 
+ *
  * On failure, it logs the error message and updates the HTML element with ID "physicianAssignStatus" with the error message.
  */
 function assignPhysician() {
