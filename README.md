@@ -35,6 +35,15 @@ to kill,
 sh kill_server.sh
 ```
 
+### Account Details
+#### User Account:
+**Email:** ```wildcat@arizona.edu```
+**Password:** ```50DQnYziNjZLaS```
+
+#### Physician Account:
+**Email:** ```physician@arizona.edu```
+**Password:** ```DuXJbQNa6L4OFC```
+
 ## Endpoints
 
 | **Method** | **Endpoint**                             | **Description**                                                 |
